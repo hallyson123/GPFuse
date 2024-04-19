@@ -192,11 +192,6 @@ def consultar_e_identificar_supertipo_subtipo(tx, rotulos):
 def marcar_propriedades_compartilhadas(nos):
     for rotulos, no in nos.items():
         if no.supertipos and no.subtipos:
-            print("")
-            print(rotulos)
-            print(no.supertipos)
-            print(no.subtipos)
-            print("")
             for supertipo in no.supertipos:
                 supertipo_key = (supertipo,)
                 if supertipo_key in nos:
@@ -206,16 +201,16 @@ def marcar_propriedades_compartilhadas(nos):
                                 no.propriedades[propriedade]["is_shared"] = True #CORRETO
                                 info_propriedade["is_shared"] = True
 
-                            for subtipo in no.subtipos:
-                                subtipo_key = (subtipo,)
-                                print(subtipo_key)
-                                if subtipo_key in nos:
-                                    print("AQUI 1")
-                                    subtipo_propriedades = nos[subtipo_key].propriedades
-                                    print(propriedade)
-                                    print(subtipo_propriedades)
-                                    if propriedade in subtipo_propriedades:
-                                        print("AQUI 2")
-                                        # Marcar a propriedade do subtipo como compartilhada
-                                        subtipo_propriedades[propriedade]["is_shared"] = True
-                                        info_propriedade["is_shared"] = True
+                        for subtipo in no.subtipos:
+                            subtipo_key = (subtipo,)
+                            if subtipo_key in nos:
+                                subtipo_propriedades = nos[subtipo_key].propriedades
+
+                                if propriedade in subtipo_propriedades:
+                                    # Marcar a propriedade do subtipo como compartilhada
+                                    subtipo_propriedades[propriedade]["is_shared"] = True
+                                    info_propriedade["is_shared"] = True
+
+                        for propriedade, info_propriedade in nos[rotulos].propriedades.items():
+                            if propriedade in no.propriedades:
+                                no.propriedades[propriedade]['is_shared'] = True
