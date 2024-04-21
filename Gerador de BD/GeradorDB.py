@@ -1,13 +1,13 @@
 from neo4j import GraphDatabase
 import random
 
-uri = "bolt://localhost:****"
+uri = "bolt://localhost:7687"  # Substitua pelo seu URI
 user = "neo4j"
-password = "****"
+password = "1F16EBD3"
 
 driver = GraphDatabase.driver(uri, auth=(user, password))
 
-def criar_nodos(tx, rotulo, propriedade, atributo, quantidade, subtipo=None):
+def criar_nodos(tx, rotulo, propriedade, atributo, quantidade, subtipo=None, enumerate_valor_max=None):
     for _ in range(quantidade):
         valor = f"{atributo}_{random.randint(1, 10000)}"  # Adiciona um valor aleatório para evitar duplicatas
         lista_valores = [random.randint(1, 10000) for _ in range(random.randint(1, 10))]  # Lista de valores aleatórios
@@ -18,11 +18,18 @@ def criar_nodos(tx, rotulo, propriedade, atributo, quantidade, subtipo=None):
             if subtipo:
                 tx.run(f"CREATE (:{rotulo}:{subtipo} {{{propriedade}: $atributo, lista_propriedade: $lista}})", atributo=valor, lista=lista_valores)
             else:
-                tx.run(f"CREATE (:{rotulo} {{{propriedade}: $atributo, lista_propriedade: $lista}})", atributo=valor, lista=lista_valores)
+                # Verificar se a propriedade deve ser enum
+                if enumerate_valor_max is not None:
+                    enumerate_propriedade = random.randint(1, enumerate_valor_max)
+                    tx.run(f"CREATE (:{rotulo} {{enumerate_propriedade: $enumerate_propriedade}})",
+                           enumerate_propriedade=enumerate_propriedade)
+                else:
+                    tx.run(f"CREATE (:{rotulo} {{{propriedade}: $atributo, lista_propriedade: $lista}})",
+                           atributo=valor, lista=lista_valores)
         else:
             print(f"Node with [{propriedade}: '{valor}]' already exists.")
 
-def criar_relacionamentos(tx, tipo_origem, propriedade_origem, tipo_relacionamento, quantidade):
+def criar_nodos_e_relacionamentos(tx, tipo_origem, propriedade_origem, tipo_relacionamento, quantidade):
     # Para cada nó de origem, criar um relacionamento com um nó de destino (Filme)
     for _ in range(quantidade):
         valor_origem = f"{propriedade_origem}_{random.randint(1, 10000)}"  # Gerar um valor aleatório para a propriedade do nó de origem
@@ -43,10 +50,12 @@ tipos_nodos = {
 rotulos_nodos = ["Pessoa", "Diretor", "Produtor", "Avaliador", "Pessoa:Diretor", "Pessoa:Produtor", "Pessoa:Avaliador"]
 
 # Exemplo de uso
-quantidade_nodos = 10000
+quantidade_nodos = 100
 quantidade_relacionamentos = 50
+enumerate = 10
+
 with driver.session() as session:
-    session.write_transaction(criar_nodos, "Filme", "titulo", "filme", quantidade_nodos) #criar nodos Filme
+    session.write_transaction(criar_nodos, "Filme", "titulo", "filme", quantidade_nodos, subtipo= None, enumerate_valor_max=enumerate) #criar nodos Filme
     for tipo_origem, subtipos in tipos_nodos.items():
         print(tipo_origem, subtipos)
         session.write_transaction(criar_nodos, tipo_origem, "nome", tipo_origem.lower(), quantidade_nodos) #criar nodos "Pessoa"
@@ -59,4 +68,4 @@ with driver.session() as session:
         valorRotulo = random.randint(0, 6)
         rotulo_origem = rotulos_nodos[valorRotulo]
         print(rotulos_nodos[valorRotulo])
-        session.write_transaction(criar_relacionamentos, rotulo_origem, rotulo_origem.lower(), "RELACIONADO_COM", quantidade_relacionamentos)
+        session.write_transaction(criar_nodos_e_relacionamentos, rotulo_origem, rotulo_origem.lower(), "RELACIONADO_COM", quantidade_relacionamentos)
