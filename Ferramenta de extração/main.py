@@ -67,6 +67,9 @@ for rotulos, no in nos.items():
             tipos_listas_str = ', '.join([f"{tipo} ({quantidade})" for tipo, quantidade in tipos_listas.items()])
             print(f"            {tipos_listas_str}")
 
+        if "constraint" in info_propriedade:
+            print(f"        Constraint: {info_propriedade['constraint']}")
+
         if "is_shared" in info_propriedade:
             print(f"        is_shared: {info_propriedade['is_shared']}")
 

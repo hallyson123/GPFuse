@@ -14,7 +14,7 @@ class No:
 
     def adicionar_propriedade(self, nome, tipo, valor):
         if nome not in self.propriedades:
-            self.propriedades[nome] = {"tipos": {}, "values": set(), "is_enum": True, "total": 0, "is_list": False, "tamQuantLista": {}, "ModaList": [], "tipos_listas": {}, "is_shared": False}
+            self.propriedades[nome] = {"tipos": {}, "values": set(),"constraint": False, "is_enum": True, "total": 0, "is_list": False, "tamQuantLista": {}, "ModaList": [], "tipos_listas": {}, "is_shared": False}
 
         if isinstance(valor, list):
             self.propriedades[nome]["is_list"] = True

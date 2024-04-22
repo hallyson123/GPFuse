@@ -214,3 +214,30 @@ def marcar_propriedades_compartilhadas(nos):
                         for propriedade, info_propriedade in nos[rotulos].propriedades.items():
                             if propriedade in no.propriedades:
                                 no.propriedades[propriedade]['is_shared'] = True
+
+def retornar_constraint(tx, nos):
+    result = tx.run("SHOW CONSTRAINT")
+
+    for record in result:
+        name = record["name"]
+        type = record["type"]
+        entityType = record["entityType"]
+        labelsOrTypes = record["labelsOrTypes"]
+        properties = record["properties"]
+        ownedIndex = record["ownedIndex"]
+        propertyType = record["propertyType"]
+
+        # print(name, type, entityType, labelsOrTypes, properties, ownedIndex, propertyType)
+
+        if entityType == "NODE":
+            labelsOrTypes_key = tuple(labelsOrTypes)
+            if labelsOrTypes_key in nos:
+                propriedades_do_rotulo = nos[labelsOrTypes_key].propriedades
+                # Convertendo a lista properties em uma tupla
+                properties_tupla = '[]'.join(properties)
+                if properties_tupla in propriedades_do_rotulo:
+                    propriedade = propriedades_do_rotulo[properties_tupla]
+                    propriedade["constraint"] = True 
+                    print(propriedade["constraint"])
+        else:
+            print()
