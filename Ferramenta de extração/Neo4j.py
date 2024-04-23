@@ -192,28 +192,21 @@ def consultar_e_identificar_supertipo_subtipo(tx, rotulos):
 def marcar_propriedades_compartilhadas(nos):
     for rotulos, no in nos.items():
         if no.supertipos and no.subtipos:
-            for supertipo in no.supertipos:
-                supertipo_key = (supertipo,)
-                if supertipo_key in nos:
-                    for propriedade, info_propriedade in nos[supertipo_key].propriedades.items():
-                        if not info_propriedade["is_shared"]:
-                            if propriedade in no.propriedades:
-                                no.propriedades[propriedade]["is_shared"] = True #CORRETO
-                                info_propriedade["is_shared"] = True
+            for propriedade, info_propriedade in no.propriedades.items():
+                if not info_propriedade["is_shared"]:
+                    for supertipo in no.supertipos:
+                        supertipo_key = (supertipo,)
+                        if supertipo_key in nos:
+                            if propriedade in nos[supertipo_key].propriedades:
+                                no.propriedades[propriedade]["is_shared"] = True
+                                nos[supertipo_key].propriedades[propriedade]["is_shared"] = True
 
-                        for subtipo in no.subtipos:
-                            subtipo_key = (subtipo,)
-                            if subtipo_key in nos:
-                                subtipo_propriedades = nos[subtipo_key].propriedades
-
-                                if propriedade in subtipo_propriedades:
-                                    # Marcar a propriedade do subtipo como compartilhada
-                                    subtipo_propriedades[propriedade]["is_shared"] = True
-                                    info_propriedade["is_shared"] = True
-
-                        for propriedade, info_propriedade in nos[rotulos].propriedades.items():
-                            if propriedade in no.propriedades:
-                                no.propriedades[propriedade]['is_shared'] = True
+                    for subtipo in no.subtipos:
+                        subtipo_key = (subtipo,)
+                        if subtipo_key in nos:
+                            if propriedade in nos[subtipo_key].propriedades:
+                                no.propriedades[propriedade]["is_shared"] = True
+                                nos[subtipo_key].propriedades[propriedade]["is_shared"] = True
 
 def retornar_constraint(tx, nos):
     result = tx.run("SHOW CONSTRAINT")
