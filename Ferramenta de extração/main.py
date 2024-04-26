@@ -7,84 +7,48 @@ marcar_propriedades_compartilhadas(nos)
 print("-----------------------")
 
 # Exibindo os resultados
-print("-----------------------")
-for rotulos, no in nos.items():
-    rotulos_str = ', '.join(rotulos)
-    print(f"Rótulo: {rotulos_str}")
-    print(f"Quantidade: {no.quantidade}")
-    
-    if no.supertipos:
-        for supertipo in no.supertipos:
-            print("    Supertipo: ", supertipo)
+def gerar_saida_pg_schema(nos):
+    schema = "CREATE GRAPH TYPE TesteGraphType STRICT {\n"
 
-    if no.subtipos:
-        for subtipo in no.subtipos:
-            print("    Subtipos:", subtipo)
+    #percorre sobre os nós e suas propriedades
+    for rotulos, no in nos.items():
+        rotulos_str = ' & '.join(rotulos)
+        schema += f"({rotulos_str}Type : {rotulos_str} {{\n"
 
-    # Propriedades
-    quantidadeNosTotal = no.quantidade
-    for propriedade, info_propriedade in no.propriedades.items():
-        print(f"    {propriedade}:")
+        #Sobre as propriedades do nó
+        for propriedade, info_propriedade in no.propriedades.items():
+            tipo_propriedade = next(iter(info_propriedade["tipos"]))  # Obter o primeiro tipo encontrado
 
-        for tipo, quantidade in info_propriedade["tipos"].items():
-            print(f"        {tipo}, Quantidade: {quantidade}")
-
-        if info_propriedade['is_enum']:
-            # threshold = quantidadeNosTotal * 0.1
-            # verificar = (info_propriedade["total"] / no.quantidade)
-            threshold = (quantidadeNosTotal * 0.1) / 100
-            verificar = (info_propriedade["total"] / no.quantidade)
-
-            if (verificar < threshold):
-                print("        Agora Enum é False")
-                info_propriedade["is_enum"] = False
-                info_propriedade["values"].clear()
+            # Verificar se a propriedade é uma enumeração
+            if info_propriedade.get("is_enum"):
+                valores_enum = ', '.join(f'"{val}"' for val in info_propriedade.get("values"))
+                schema += f"    {propriedade} ENUM ({valores_enum}),\n"
             else:
-                print("        True")
+                schema += f"    {propriedade} {tipo_propriedade.upper()},\n"
 
-        print(f"        Is Enum: {info_propriedade['is_enum']}")
+        schema = schema.rstrip(",\n")  #Remover a última vírgula e quebra de linha
+        schema += "}),\n"
 
-        if info_propriedade['is_enum'] == True:
-            print(f"            Values: {info_propriedade['values']}")
+    # Iterar sobre os relacionamentos
+    relacionamentos = set()  # Conjunto para armazenar os tipos de relacionamento já adicionados
+    for rotulos, no in nos.items():
+        for tipo_relacionamento, relacoes in no.relacionamentos.items():
+            for destino, quantidade_rel in relacoes:
+                destinos_str = ' & '.join(destino)
+                cardinalidade = no.cardinalidades.get(tipo_relacionamento, "")  # Verificar se há cardinalidade
+                tipos_origem = ' | '.join(rotulos) if len(rotulos) > 1 else rotulos[0]
 
-        print(f"        Is List: {info_propriedade['is_list']}")
+                # Verificar se o tipo de relacionamento já foi adicionado anteriormente
+                if (tipos_origem, tipo_relacionamento, destinos_str) not in relacionamentos:
+                    # Adicionar relacionamento apenas se não tiver sido adicionado antes
+                    schema += f"(:{tipos_origem})-[{tipo_relacionamento}Type {cardinalidade}]->(:{destinos_str}Type),\n"
+                    relacionamentos.add((tipos_origem, tipo_relacionamento, destinos_str))
 
-        if info_propriedade["is_list"] and "moda_lista" in info_propriedade:
-            # Tamanhos de listas
-            print(f"            Tamanhos de Listas: {info_propriedade['tamQuantLista']}")
+    schema = schema.rstrip(",\n")  # Remover a última vírgula e quebra de linha
+    schema += "\n}"
 
-            # Moda da lista
-            moda_lista = info_propriedade["moda_lista"]
+    return schema
 
-            # Encontrar a moda (valores que mais aparecem)
-            contagem_valores = {valor: moda_lista.count(valor) for valor in set(moda_lista)}
-            max_contagem = max(contagem_valores.values(), default=0)
-            modas = [valor for valor, contagem in contagem_valores.items() if contagem == max_contagem]
-            print(f"            Moda da Lista: {modas}")
-
-            # Tipos armazenados nas listas
-            tipos_listas = info_propriedade["tipos_listas"]
-            tipos_listas_str = ', '.join([f"{tipo} ({quantidade})" for tipo, quantidade in tipos_listas.items()])
-            print(f"            {tipos_listas_str}")
-
-        if "constraint" in info_propriedade:
-            print(f"        Constraint: {info_propriedade['constraint']}")
-
-        if "is_shared" in info_propriedade:
-            print(f"        is_shared: {info_propriedade['is_shared']}")
-
-        print(f"        Total: {info_propriedade['total']}")
-
-    # Imprimir relacionamentos
-    print("-------")
-    print("Relacionamentos:")
-    for tipo_relacionamento, relacoes in no.relacionamentos.items():
-        for destino, quantidade_rel in relacoes:
-            destinos_str = ', '.join(destino)
-            if tipo_relacionamento in no.cardinalidades:
-                cardinalidade = no.cardinalidades[tipo_relacionamento]
-                print(f"    [:{tipo_relacionamento}] -> ({destinos_str}) (Quantidade: {quantidade_rel}, Cardinalidade: {cardinalidade})")
-            else:
-                print(f"    [:{tipo_relacionamento}] -> ({destinos_str}) (Quantidade: {quantidade_rel})")
-    print("-------")
-    print("-----------------------")
+#gerar a saída PG-SCHEMA
+saida_pg_schema = gerar_saida_pg_schema(nos)
+print(saida_pg_schema)
