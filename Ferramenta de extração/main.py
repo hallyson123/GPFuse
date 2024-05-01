@@ -1,5 +1,5 @@
 from ConexãoBanco import nos
-from Neo4j import marcar_propriedades_compartilhadas
+from Neo4j import marcar_propriedades_compartilhadas, definir_enum
 
 print("-----------------------")
 # Chamar a função para marcar propriedades compartilhadas
@@ -20,6 +20,9 @@ def gerar_saida_pg_schema(nos):
             tipo_propriedade = next(iter(info_propriedade["tipos"]))  # Obter o primeiro tipo encontrado
 
             # Verificar se a propriedade é uma enumeração
+            quantidadeNosTotal = no.quantidade
+            definir_enum(quantidadeNosTotal, info_propriedade, no)
+            
             if info_propriedade.get("is_enum"):
                 valores_enum = ', '.join(f'"{val}"' for val in info_propriedade.get("values"))
                 schema += f"    {propriedade} ENUM ({valores_enum}),\n"

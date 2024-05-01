@@ -234,3 +234,11 @@ def retornar_constraint(tx, nos):
                     print(propriedade["constraint"])
         else:
             print()
+
+def definir_enum(quantidadeNosTotal, info_propriedade, no):
+    threshold = (quantidadeNosTotal * 0.1) / 100
+    verificar = (info_propriedade["total"] / no.quantidade)
+
+    if ((verificar < threshold) or len(info_propriedade["values"]) <= 1):
+        info_propriedade["is_enum"] = False
+        info_propriedade["values"].clear()
