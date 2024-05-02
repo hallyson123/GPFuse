@@ -1,7 +1,7 @@
 from neo4j import GraphDatabase
 import random
 from criar_nodos import criar_nodos
-from criar_relacionamentos import criar_relacionamentos
+from criar_relacionamentos import rel_pessoas_filmes, rel_financiadores_filmes
 from criar_restricao import criar_restricao
 
 uri = "bolt://localhost:7687"  # Substitua pelo seu URI
@@ -28,9 +28,7 @@ with driver.session() as session:
     #Criar restriçao
     session.write_transaction(criar_restricao, "Filme", "titulo")
     session.write_transaction(criar_restricao, "Streaming", "nome")
-
-    # Criar nodos Filme
-    session.write_transaction(criar_nodos, "Filme", "titulo", "filme", quantidade_nodos) #criar nodos Filme
+    session.write_transaction(criar_restricao, "Financiador", "nome")
 
     #Criar nodos para testar enumerate
     for _ in range(max_enumerate):
@@ -44,9 +42,15 @@ with driver.session() as session:
             session.write_transaction(criar_nodos, subtipo, "nome", subtipo.lower(), quantidade_nodos, tipo_origem) # cria nodos "Pessoa:Diretor", "Pessoa:Produtor", "Pessoa:Avaliador"
             session.write_transaction(criar_nodos, subtipo, "nome", subtipo.lower(), quantidade_nodos) #cria nodos "Diretor", "Produtor", "Avaliador"
             
-    #criar relacionamentos
+    #criar relacionamentos (1,N):(0,N)
     for _ in range(quantidade_relacionamentos):
         valorRotulo = random.randint(0, 6)
         rotulo_origem = rotulos_nodos[valorRotulo]
-        # print(rotulos_nodos[valorRotulo])
-        session.write_transaction(criar_relacionamentos, rotulo_origem, rotulo_origem.lower(), quantidade_relacionamentos)
+        session.write_transaction(rel_pessoas_filmes, rotulo_origem, rotulo_origem.lower(), quantidade_relacionamentos)
+
+    #criar relacionamentos (0,1):(1,1)
+    for _ in range(max_enumerate):
+        propriedade = f"financiador_{random.randint(1, 10)}"
+        session.write_transaction(criar_nodos, "Financiador", "nome", propriedade, max_enumerate, subtipo = None, enumerate_valor_max= max_enumerate)
+
+    session.write_transaction(rel_financiadores_filmes, 10)
