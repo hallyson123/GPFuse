@@ -1,0 +1,37 @@
+CREATE GRAPH TYPE TesteGraphType STRICT {
+(PessoaType : Pessoa {
+    nome STR,
+    lista_propriedade LIST}),
+    
+(Pessoa & DiretorType : Pessoa & Diretor {
+    nome STR,
+    sem_compartilhamento STR,
+    lista_propriedade LIST}),
+
+(Pessoa & ProdutorType : Pessoa & Produtor {
+    nome STR,
+    sem_compartilhamento STR,
+    lista_propriedade LIST}),
+
+(Pessoa & AvaliadorType : Pessoa & Avaliador {
+    nome STR,
+    sem_compartilhamento STR,
+    lista_propriedade LIST}),
+
+(FilmeType : Filme {
+    titulo STR}),
+
+(FinanciadorType : Financiador {
+    nome ENUM ("financiador_9", "financiador_7", "financiador_3", "financiador_4", "financiador_10", "financiador_2", "financiador_1", "financiador_5")}),
+
+(StreamingType : Streaming {
+    nome ENUM ("Paramount+", "HBO Max", "Disney+", "Apple TV+", "Globoplay", "Netflix")}),
+
+(:Pessoa)-[PESSOAType (1:N);(0:N)]->(:FilmeType),
+(:Pessoa | Diretor)-[DIRETOType (1:N);(0:N)]->(:FilmeType),
+(:Pessoa | Produtor)-[PRODUTType (1:N);(0:N)]->(:FilmeType),
+(:Pessoa | Avaliador)-[AVALIAType (1:N);(0:N)]->(:FilmeType),
+(:Financiador)-[PATROCINAType (0:1);(1:1)]->(:FilmeType),
+(:Streaming)-[CONTEMType (0:N);(1:N)]->(:FilmeType)
+
+}
