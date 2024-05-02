@@ -7,3 +7,7 @@
 - Criar Nodos: Gera nodos com rótulos, propriedades e atributos aleatórios. Também permite criar subtipos de nodos.
 - Criar Relacionamentos: Estabelece relacionamentos entre os nodos criados, garantindo que cada nodo de origem tenha pelo menos um relacionamento.
 - Criar Restrições: Cria restrições de unicidade para garantir que certas propriedades de nodos sejam únicas.
+
+#### Esquema conceitual do banco de dados ####
+
+![Modelo ER](https://github.com/hallyson123/Projeto-IC/assets/47453299/b7917fd9-0044-4661-9093-70baa06263e1)
