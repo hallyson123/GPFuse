@@ -60,3 +60,12 @@ def rel_financiadores_filmes(tx, quantidade):
             # Criar o relacionamento de financiamento entre o financiador e o filme
             tx.run("MATCH (origem:Financiador {nome: $propriedade_origem}), (destino:Filme {titulo: $propriedade_destino}) "
                 "MERGE (origem)-[:PATROCINA]->(destino)", propriedade_origem=financiador, propriedade_destino=valor_destino)
+            
+def rel_streaming_filme(tx, propriedade_origem, quantidade):
+    propriedade_streaming = propriedade_origem  # Streaming
+
+    #criar rel Streaming -[CONTEM]-> Filme ((0:N);(0:N))
+    for _ in range(quantidade):
+        propriedade_filme = f"filme_{random.randint(1, 501)}" #Filme aleatorio
+        tx.run("MATCH (origem:Streaming{nome: $propriedade_origem}), (destino:Filme {titulo: $propriedade_destino}) "
+            "MERGE (origem)-[:CONTEM]->(destino)", propriedade_origem=propriedade_streaming, propriedade_destino=propriedade_filme)

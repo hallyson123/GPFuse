@@ -1,7 +1,7 @@
 from neo4j import GraphDatabase
 import random
 from criar_nodos import criar_nodos
-from criar_relacionamentos import rel_pessoas_filmes, rel_financiadores_filmes
+from criar_relacionamentos import rel_pessoas_filmes, rel_financiadores_filmes, rel_streaming_filme
 from criar_restricao import criar_restricao
 
 uri = "bolt://localhost:7687"  # Substitua pelo seu URI
@@ -30,11 +30,6 @@ with driver.session() as session:
     session.write_transaction(criar_restricao, "Streaming", "nome")
     session.write_transaction(criar_restricao, "Financiador", "nome")
 
-    #Criar nodos para testar enumerate
-    for _ in range(max_enumerate):
-        indice = random.randint(0, 7)
-        session.write_transaction(criar_nodos, "Streaming", "nome", sites_avaliações[indice], max_enumerate, subtipo = None, enumerate_valor_max= max_enumerate)
-
     #Criar nodos Pessoa e seus subtipos
     for tipo_origem, subtipos in tipos_nodos.items():
         session.write_transaction(criar_nodos, tipo_origem, "nome", tipo_origem.lower(), quantidade_nodos) #criar nodos "Pessoa"
@@ -54,3 +49,11 @@ with driver.session() as session:
         session.write_transaction(criar_nodos, "Financiador", "nome", propriedade, max_enumerate, subtipo = None, enumerate_valor_max= max_enumerate)
 
     session.write_transaction(rel_financiadores_filmes, 10)
+
+    #Criar nodos para testar enumerate
+    for _ in range(max_enumerate):
+        indice = random.randint(0, 7)
+        session.write_transaction(criar_nodos, "Streaming", "nome", sites_avaliações[indice], max_enumerate, subtipo = None, enumerate_valor_max= max_enumerate)
+        
+        #Criar relacionamentos (0,N):(0,N)
+        session.write_transaction(rel_streaming_filme, sites_avaliações[indice], 50)
