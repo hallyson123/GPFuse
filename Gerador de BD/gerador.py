@@ -19,13 +19,14 @@ rotulos_nodos = ["Pessoa", "Diretor", "Produtor", "Avaliador", "Pessoa:Diretor",
 sites_avaliações = ["HBO Max", "Amazon Prime", "Netflix", "Globoplay", "Disney+", "Star+", "Paramount+", "Apple TV+"]
 
 # Exemplo de uso
-quantidade_nodos = 200
-quantidade_relacionamentos = 100
+quantidade_nodos = 5000
+quantidade_relacionamentos = 500
 max_enumerate = 10
 obrigatorio = True
 
 with driver.session() as session:
     #Criar restriçao
+    session.write_transaction(criar_restricao, "Pessoa", "nome")
     session.write_transaction(criar_restricao, "Filme", "titulo")
     session.write_transaction(criar_restricao, "Streaming", "nome")
     session.write_transaction(criar_restricao, "Financiador", "nome")
@@ -55,5 +56,5 @@ with driver.session() as session:
         indice = random.randint(0, 7)
         session.write_transaction(criar_nodos, "Streaming", "nome", sites_avaliações[indice], max_enumerate, subtipo = None, enumerate_valor_max= max_enumerate)
         
-        #Criar relacionamentos (0,N):(0,N)
+        #Criar relacionamentos (0,N):(1,N)
         session.write_transaction(rel_streaming_filme, sites_avaliações[indice], 50)
