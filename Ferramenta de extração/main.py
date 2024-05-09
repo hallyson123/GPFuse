@@ -10,32 +10,34 @@ print("-----------------------")
 def gerar_saida_pg_schema(nos):
     schema = "CREATE GRAPH TYPE TesteGraphType STRICT {\n"
 
-    #percorre sobre os nós e suas propriedades
+    # percorre sobre os nós e suas propriedades
     for rotulos, no in nos.items():
         rotulos_str = ' & '.join(rotulos)
         schema += f"({rotulos_str}Type : {rotulos_str} {{\n"
 
-        #Sobre as propriedades do nó
+        # Sobre as propriedades do nó
         for propriedade, info_propriedade in no.propriedades.items():
-            tipo_propriedade = max(info_propriedade["tipos"], key=info_propriedade["tipos"].get) #tipo da propriedade com a maior ocorrência
+            tipo_propriedade = max(info_propriedade["tipos"], key=info_propriedade["tipos"].get)  # tipo da propriedade com a maior ocorrência
 
             # Verificar se a propriedade é uma enumeração
             quantidadeNosTotal = no.quantidade
             definir_enum(quantidadeNosTotal, info_propriedade, no)
 
-            #Verificar se a propriedade é opcional
-            # total_nodo = no.quantidade
-            # total_propriedade = info_propriedade["total"]
+            # Verificar se a propriedade é opcional
+            opcional = False
             if no.quantidade != info_propriedade["total"]:
-                # print(total_nodo, total_propriedade)
                 opcional = True
-            else:
-                # print(total_nodo, total_propriedade)
-                opcional = False
-            
+
+            # Verificar se a propriedade tem constraint MANDATORY
+            if "MANDATORY" in info_propriedade["constraintList"]:
+                schema += f"    MANDATORY {propriedade} {tipo_propriedade.upper()},\n"
+            # Verificar se a propriedade tem constraint SINGLETON
+            if "SINGLETON" in info_propriedade["constraintList"]:
+                schema += f"    SINGLETON {propriedade} {tipo_propriedade.upper()},\n"
+
             if info_propriedade.get("is_enum"):
                 valores_enum = ', '.join(f'"{val}"' for val in info_propriedade.get("values"))
-                
+
                 if opcional:
                     schema += f"    OPTIONAL {propriedade} ENUM ({valores_enum}),\n"
                 else:
@@ -45,15 +47,10 @@ def gerar_saida_pg_schema(nos):
                 # Ajustar o tipo LIST conforme o PG-SCHEMA
                 if info_propriedade["is_list"]:
                     tipo_propriedade = "array"
-                    tipo_maior_freq = max(info_propriedade["tipos_listas"], key=info_propriedade["tipos_listas"].get) # Pega o tipo mais frequente armazanado na lista
-                    # tam_max_lista = max(info_propriedade["tamQuantLista"], key=info_propriedade["tamQuantLista"].get)
-                    # tam_min_lista = min(info_propriedade["tamQuantLista"], key=info_propriedade["tamQuantLista"].get)
-                    
-                    # Inicializar o tamanho mínimo e máximo
+                    tipo_maior_freq = max(info_propriedade["tipos_listas"], key=info_propriedade["tipos_listas"].get)  # Pega o tipo mais frequente armazanado na lista
                     tam_min_lista = float('inf')
                     tam_max_lista = float('-inf')
-                    
-                    # Percorrer os itens do dicionário tamQuantLista para encontrar o tamanho mínimo e máximo
+
                     for tamanho in info_propriedade["tamQuantLista"]:
                         if tamanho < tam_min_lista:
                             tam_min_lista = tamanho
@@ -70,7 +67,7 @@ def gerar_saida_pg_schema(nos):
                     else:
                         schema += f"    {propriedade} {tipo_propriedade.upper()},\n"
 
-        schema = schema.rstrip(",\n")  #Remover a última vírgula e quebra de linha
+        schema = schema.rstrip(",\n")  # Remover a última vírgula e quebra de linha
         schema += "}),\n\n"
 
     # Iterar sobre os relacionamentos
@@ -88,11 +85,33 @@ def gerar_saida_pg_schema(nos):
                     schema += f"(:{tipos_origem})-[{tipo_relacionamento}Type {cardinalidade}]->(:{destinos_str}Type),\n"
                     relacionamentos.add((tipos_origem, tipo_relacionamento, destinos_str))
 
+    # Remover a última vírgula e quebra de linha
+    schema = schema.rstrip(",\n")
+    # Adicionar as constraints FOR do PG-SCHEMA
+    schema += "\n\n"
+
+    for rotulos, no in nos.items():
+        for propriedade, info_propriedade in no.propriedades.items():
+            op = True
+            if no.quantidade == info_propriedade["total"]:
+                op = False
+            if op == False:
+                rotulos_str = ':'.join(rotulos)
+                schema += f"FOR (x:{rotulos_str}Type) MANDATORY x.{propriedade},\n"
+
+    schema += "\n"
+
+    for rotulos, no in nos.items():
+        for propriedade, info_propriedade in no.propriedades.items():
+            if "UNIQUENESS" in info_propriedade["constraintList"]:
+                rotulos_str = ':'.join(rotulos)
+                schema += f"FOR (x:{rotulos_str}Type) SINGLETON x.{propriedade},\n"
+
     schema = schema.rstrip(",\n")  # Remover a última vírgula e quebra de linha
     schema += "\n}"
 
     return schema
 
-#gerar a saída PG-SCHEMA
+# gerar a saída PG-SCHEMA
 saida_pg_schema = gerar_saida_pg_schema(nos)
 print(saida_pg_schema)
