@@ -1,31 +1,35 @@
 CREATE GRAPH TYPE TesteGraphType STRICT {
+(TesteType : Teste {
+    OPTIONAL property1 ARRAY int (3, 7),
+    OPTIONAL property2 INT}),
+
 (PessoaType : Pessoa {
     nome STR,
-    lista_propriedade LIST}),
-    
+    lista_propriedade ARRAY int (1, 10)}),
+
 (Pessoa & DiretorType : Pessoa & Diretor {
     nome STR,
     sem_compartilhamento STR,
-    lista_propriedade LIST}),
+    lista_propriedade ARRAY int (1, 10)}),
 
 (Pessoa & ProdutorType : Pessoa & Produtor {
     nome STR,
     sem_compartilhamento STR,
-    lista_propriedade LIST}),
+    lista_propriedade ARRAY int (1, 10)}),
 
 (Pessoa & AvaliadorType : Pessoa & Avaliador {
     nome STR,
     sem_compartilhamento STR,
-    lista_propriedade LIST}),
+    lista_propriedade ARRAY int (1, 10)}),
 
 (FilmeType : Filme {
     titulo STR}),
 
 (FinanciadorType : Financiador {
-    nome ENUM ("financiador_9", "financiador_7", "financiador_3", "financiador_4", "financiador_10", "financiador_2", "financiador_1", "financiador_5")}),
+    nome ENUM ("financiador_2", "financiador_5", "financiador_10", "financiador_7", "financiador_4", "financiador_9", "financiador_3", "financiador_1")}),
 
 (StreamingType : Streaming {
-    nome ENUM ("Paramount+", "HBO Max", "Disney+", "Apple TV+", "Globoplay", "Netflix")}),
+    nome ENUM ("HBO Max", "Globoplay", "Paramount+", "Netflix", "Disney+", "Apple TV+")}),
 
 (:Pessoa)-[PESSOAType (1:N);(0:N)]->(:FilmeType),
 (:Pessoa | Diretor)-[DIRETOType (1:N);(0:N)]->(:FilmeType),
@@ -33,5 +37,26 @@ CREATE GRAPH TYPE TesteGraphType STRICT {
 (:Pessoa | Avaliador)-[AVALIAType (1:N);(0:N)]->(:FilmeType),
 (:Financiador)-[PATROCINAType (0:1);(1:1)]->(:FilmeType),
 (:Streaming)-[CONTEMType (0:N);(1:N)]->(:FilmeType)
+
+FOR (x:PessoaType) MANDATORY x.nome,
+FOR (x:PessoaType) MANDATORY x.lista_propriedade,
+FOR (x:Pessoa:DiretorType) MANDATORY x.nome,
+FOR (x:Pessoa:DiretorType) MANDATORY x.sem_compartilhamento,
+FOR (x:Pessoa:DiretorType) MANDATORY x.lista_propriedade,
+FOR (x:Pessoa:ProdutorType) MANDATORY x.nome,
+FOR (x:Pessoa:ProdutorType) MANDATORY x.sem_compartilhamento,
+FOR (x:Pessoa:ProdutorType) MANDATORY x.lista_propriedade,
+FOR (x:Pessoa:AvaliadorType) MANDATORY x.nome,
+FOR (x:Pessoa:AvaliadorType) MANDATORY x.sem_compartilhamento,
+FOR (x:Pessoa:AvaliadorType) MANDATORY x.lista_propriedade,
+FOR (x:FilmeType) MANDATORY x.titulo,
+FOR (x:FinanciadorType) MANDATORY x.nome,
+FOR (x:StreamingType) MANDATORY x.nome,
+
+FOR (x:TesteType) SINGLETON x.(property1, property2)
+FOR (x:PessoaType) SINGLETON x.nome,
+FOR (x:FilmeType) SINGLETON x.titulo,
+FOR (x:FinanciadorType) SINGLETON x.nome,
+FOR (x:StreamingType) SINGLETON x.nome
 
 }
