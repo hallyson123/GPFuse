@@ -17,20 +17,61 @@ def gerar_saida_pg_schema(nos):
 
         #Sobre as propriedades do nó
         for propriedade, info_propriedade in no.propriedades.items():
-            tipo_propriedade = next(iter(info_propriedade["tipos"]))  # Obter o primeiro tipo encontrado
+            tipo_propriedade = max(info_propriedade["tipos"], key=info_propriedade["tipos"].get) #tipo da propriedade com a maior ocorrência
 
             # Verificar se a propriedade é uma enumeração
             quantidadeNosTotal = no.quantidade
             definir_enum(quantidadeNosTotal, info_propriedade, no)
+
+            #Verificar se a propriedade é opcional
+            # total_nodo = no.quantidade
+            # total_propriedade = info_propriedade["total"]
+            if no.quantidade != info_propriedade["total"]:
+                # print(total_nodo, total_propriedade)
+                opcional = True
+            else:
+                # print(total_nodo, total_propriedade)
+                opcional = False
             
             if info_propriedade.get("is_enum"):
                 valores_enum = ', '.join(f'"{val}"' for val in info_propriedade.get("values"))
-                schema += f"    {propriedade} ENUM ({valores_enum}),\n"
+                
+                if opcional:
+                    schema += f"    OPTIONAL {propriedade} ENUM ({valores_enum}),\n"
+                else:
+                    schema += f"    {propriedade} ENUM ({valores_enum}),\n"
+
             else:
-                schema += f"    {propriedade} {tipo_propriedade.upper()},\n"
+                # Ajustar o tipo LIST conforme o PG-SCHEMA
+                if info_propriedade["is_list"]:
+                    tipo_propriedade = "array"
+                    tipo_maior_freq = max(info_propriedade["tipos_listas"], key=info_propriedade["tipos_listas"].get) # Pega o tipo mais frequente armazanado na lista
+                    # tam_max_lista = max(info_propriedade["tamQuantLista"], key=info_propriedade["tamQuantLista"].get)
+                    # tam_min_lista = min(info_propriedade["tamQuantLista"], key=info_propriedade["tamQuantLista"].get)
+                    
+                    # Inicializar o tamanho mínimo e máximo
+                    tam_min_lista = float('inf')
+                    tam_max_lista = float('-inf')
+                    
+                    # Percorrer os itens do dicionário tamQuantLista para encontrar o tamanho mínimo e máximo
+                    for tamanho in info_propriedade["tamQuantLista"]:
+                        if tamanho < tam_min_lista:
+                            tam_min_lista = tamanho
+                        if tamanho > tam_max_lista:
+                            tam_max_lista = tamanho
+
+                    if opcional:
+                        schema += f"    OPTIONAL {propriedade} {tipo_propriedade.upper()} {tipo_maior_freq} ({tam_min_lista}, {tam_max_lista}),\n"
+                    else:
+                        schema += f"    {propriedade} {tipo_propriedade.upper()} {tipo_maior_freq} ({tam_min_lista}, {tam_max_lista}),\n"
+                else:
+                    if opcional:
+                        schema += f"    OPTIONAL {propriedade} {tipo_propriedade.upper()},\n"
+                    else:
+                        schema += f"    {propriedade} {tipo_propriedade.upper()},\n"
 
         schema = schema.rstrip(",\n")  #Remover a última vírgula e quebra de linha
-        schema += "}),\n"
+        schema += "}),\n\n"
 
     # Iterar sobre os relacionamentos
     relacionamentos = set()  # Conjunto para armazenar os tipos de relacionamento já adicionados
