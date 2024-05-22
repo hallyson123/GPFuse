@@ -224,16 +224,29 @@ def retornar_constraint(tx, nos):
 
         if entityType == "NODE":
             labelsOrTypes_key = tuple(labelsOrTypes)
-            if labelsOrTypes_key in nos:
-                propriedades_do_rotulo = nos[labelsOrTypes_key].propriedades
-                # Convertendo a lista properties em uma tupla
-                properties_tupla = '[]'.join(properties)
-                if properties_tupla in propriedades_do_rotulo:
-                    propriedade = propriedades_do_rotulo[properties_tupla]
-                    propriedade["constraint"] = True 
-                    print(propriedade["constraint"])
-        else:
-            print()
+
+            # Iterar sobre cada rótulo individualmente
+            for rotulo in labelsOrTypes_key:
+                rotulo_key = (rotulo,)  # Convertendo para uma tupla de um único elemento
+                if rotulo_key in nos:  # Use rotulo_key em vez de labelsOrTypes_key
+                    propriedades_do_rotulo = nos[rotulo_key].propriedades
+
+                    if len(properties) > 1:
+                        # Se a lista de propriedades tiver mais de um elemento, marque-as como listas e adicione-as à listaProp corretamente
+                        for prop in properties:
+                            if prop in propriedades_do_rotulo:
+                                propriedades_do_rotulo[prop]['constraint'] = True
+                                propriedades_do_rotulo[prop]["constraintList"].append(type)
+                                propriedades_do_rotulo[prop]['listConstProp'] = True
+                                propriedades_do_rotulo[prop]['listProp'].append(prop)  # Adiciona cada propriedade individualmente à listProp
+                    else:
+                        # Se houver apenas uma propriedade, adicione-a à listProp corretamente
+                        properties_tupla = properties[0]
+                        if properties_tupla in propriedades_do_rotulo:
+                            propriedade = propriedades_do_rotulo[properties_tupla]
+                            propriedade["constraint"] = True 
+                            propriedade["constraintList"].append(type)
+                            propriedade["listProp"].append(properties_tupla)  # Adiciona a propriedade individualmente à listProp
 
 def definir_enum(quantidadeNosTotal, info_propriedade, no):
     threshold = (quantidadeNosTotal * 0.1) / 100

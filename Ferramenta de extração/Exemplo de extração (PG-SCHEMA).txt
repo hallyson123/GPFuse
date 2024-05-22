@@ -1,7 +1,7 @@
 CREATE GRAPH TYPE TesteGraphType STRICT {
-(TesteType : Teste {
-    OPTIONAL property1 ARRAY int (3, 7),
-    OPTIONAL property2 INT}),
+(TesteFinalType : TesteFinal {
+    final1 INT,
+    final2 INT}),
 
 (PessoaType : Pessoa {
     nome STR,
@@ -26,10 +26,10 @@ CREATE GRAPH TYPE TesteGraphType STRICT {
     titulo STR}),
 
 (FinanciadorType : Financiador {
-    nome ENUM ("financiador_2", "financiador_5", "financiador_10", "financiador_7", "financiador_4", "financiador_9", "financiador_3", "financiador_1")}),
+    nome ENUM ("financiador_9", "financiador_1", "financiador_3", "financiador_10", "financiador_5", "financiador_7", "financiador_2", "financiador_4")}),
 
 (StreamingType : Streaming {
-    nome ENUM ("HBO Max", "Globoplay", "Paramount+", "Netflix", "Disney+", "Apple TV+")}),
+    nome ENUM ("Disney+", "Netflix", "Paramount+", "Globoplay", "HBO Max", "Apple TV+")}),
 
 (:Pessoa)-[PESSOAType (1:N);(0:N)]->(:FilmeType),
 (:Pessoa | Diretor)-[DIRETOType (1:N);(0:N)]->(:FilmeType),
@@ -38,6 +38,8 @@ CREATE GRAPH TYPE TesteGraphType STRICT {
 (:Financiador)-[PATROCINAType (0:1);(1:1)]->(:FilmeType),
 (:Streaming)-[CONTEMType (0:N);(1:N)]->(:FilmeType)
 
+FOR (x:TesteFinalType) MANDATORY x.final1,
+FOR (x:TesteFinalType) MANDATORY x.final2,
 FOR (x:PessoaType) MANDATORY x.nome,
 FOR (x:PessoaType) MANDATORY x.lista_propriedade,
 FOR (x:Pessoa:DiretorType) MANDATORY x.nome,
@@ -53,10 +55,9 @@ FOR (x:FilmeType) MANDATORY x.titulo,
 FOR (x:FinanciadorType) MANDATORY x.nome,
 FOR (x:StreamingType) MANDATORY x.nome,
 
-FOR (x:TesteType) SINGLETON x.(property1, property2)
+FOR (x:TesteFinalType) SINGLETON x.(final1, final2),
 FOR (x:PessoaType) SINGLETON x.nome,
 FOR (x:FilmeType) SINGLETON x.titulo,
 FOR (x:FinanciadorType) SINGLETON x.nome,
 FOR (x:StreamingType) SINGLETON x.nome
-
 }

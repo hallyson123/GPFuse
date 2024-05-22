@@ -101,11 +101,22 @@ def gerar_saida_pg_schema(nos):
 
     schema += "\n"
 
+    listaProp = []  # Lista para armazenar todas as propriedades da lista
     for rotulos, no in nos.items():
+        print(rotulos)
         for propriedade, info_propriedade in no.propriedades.items():
-            if "UNIQUENESS" in info_propriedade["constraintList"]:
+            print(info_propriedade)
+            if info_propriedade["constraint"] and "UNIQUENESS" in info_propriedade["constraintList"]:
                 rotulos_str = ':'.join(rotulos)
-                schema += f"FOR (x:{rotulos_str}Type) SINGLETON x.{propriedade},\n"
+                
+                if info_propriedade["listConstProp"]:
+                    listaProp.extend(info_propriedade["listProp"])  # Adiciona as propriedades à lista
+                    propriedades_concatenadas = ', '.join(listaProp)  # Concatena todas as propriedades em uma única string
+
+                    if len(listaProp) > 1:
+                        schema += f"FOR (x:{rotulos_str}Type) SINGLETON x.({propriedades_concatenadas}),\n"
+                else:
+                    schema += f"FOR (x:{rotulos_str}Type) SINGLETON x.{propriedade},\n"
 
     schema = schema.rstrip(",\n")  # Remover a última vírgula e quebra de linha
     schema += "\n}"
