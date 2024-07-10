@@ -55,7 +55,10 @@ def percorrerNosLista(tx, nos, rotulos, nome, valor):
     # Atualiza os tipos armazenados nas listas
     tipos_elementos = set(type(elem).__name__ for elem in valor)
     tipo_elem = ', '.join(sorted(tipos_elementos))  # Tipos como string
-    quantidade_elem = valor.count(valor[0])
+    if valor:
+        quantidade_elem = valor.count(valor[0])
+    else:
+        quantidade_elem = 0
     multiplicacao = tamanho * quantidade_elem
     tipos_lista[tipo_elem] = tipos_lista.get(tipo_elem, 0) + multiplicacao
 
