@@ -1,5 +1,6 @@
-from ConexãoBanco import nos
+from ConexãoBanco import nos, start_time
 from Neo4j import marcar_propriedades_compartilhadas, definir_enum
+import time
 
 print("-----------------------")
 # Chamar a função para marcar propriedades compartilhadas
@@ -120,6 +121,11 @@ def gerar_saida_pg_schema(nos):
 
     schema = schema.rstrip(",\n")  # Remover a última vírgula e quebra de linha
     schema += "\n}"
+
+    end_time = time.time()  # Marcar o tempo de término
+    elapsed_time = end_time - start_time  # Calcular o tempo decorrido
+
+    print(f"Tempo de execução: {elapsed_time:.2f} segundos")
 
     return schema
 

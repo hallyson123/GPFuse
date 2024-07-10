@@ -5,10 +5,13 @@ MAX_ENUMERATE = 5
 def percorrer_nos_e_armazenar_info(tx, nos):
     result = tx.run(
         "MATCH (p)"
-        "RETURN labels(p) AS nodeType, properties(p) AS props"
+        "RETURN labels(p) AS nodeType, properties(p) AS props LIMIT 100000"
     )
+    i = 0
     for record in result:
+        i += 1
         rotulos = tuple(record["nodeType"])
+        print(f"Nodos: {rotulos} {i}")
         if rotulos not in nos:
             nos[rotulos] = No(rotulos)
         nos[rotulos].quantidade += 1  # incrementar a quantidade
@@ -28,13 +31,16 @@ def percorrer_nos_e_armazenar_info(tx, nos):
         if len(rotulos) == 2 or len(rotulos) == 3:
             for rotulo in rotulos:
                 if rotulo in nos[rotulos].supertipos or rotulo in nos[rotulos].subtipos:
+                    # print(f"{rotulo} JA TEM")
                     break
                 else:
                     supertipo, subtipos = consultar_e_identificar_supertipo_subtipo(tx, rotulos)
-
+                    # print("SUPER:", supertipo)
+                    # print("SUB:", subtipos)
                     if supertipo and subtipos:
                         nos[rotulos].adicionar_supertipo(supertipo)
                         for subtipo in subtipos:
+                            # print("SUB:", subtipo)
                             nos[rotulos].adicionar_subtipo(subtipo)
 
 def percorrerNosLista(tx, nos, rotulos, nome, valor):
@@ -95,8 +101,9 @@ def coletar_relacionamentos(tx, nos):
         "MATCH (p)-[r]->(q)"
         "RETURN labels(p) AS origem, type(r) AS relType, labels(q) AS destLabel, count(r) AS count"
     )
-
+    i = 0
     for record in result:
+        i += 1
         rotulo_origem = tuple(record["origem"])
         tipo_relacionamento = record["relType"]
         rotulo_destino = tuple(record["destLabel"])
@@ -105,40 +112,46 @@ def coletar_relacionamentos(tx, nos):
         origem = ':'.join(rotulo_origem)
         destino = ':'.join(rotulo_destino)
 
+        print(f"Rel: {origem} {i}")
+
         if rotulo_origem not in nos:
             nos[rotulo_origem] = No(rotulo_origem)
         nos[rotulo_origem].adicionar_relacionamento(tipo_relacionamento, rotulo_destino, quantidade_origem)
 
-        #CARDINALIDADE
+        # #CARDINALIDADE
         result_cardinalidade_origem = tx.run( #Retorna as propriedades (origem) que estão associadas a tantos nodos (destino)
             f"match(p:{origem})-[:{tipo_relacionamento}]->(m:{destino}) "
-            f"return properties(p), count(m) as quantidadeOrigem "
+            f"WITH p, count(m) AS quantidadeOrigem "
+            f"WHERE quantidadeOrigem > 1 "
+            f"return properties(p), quantidadeOrigem LIMIT 1 "
         )
 
         cardinalidadeOrigem = 0
         for record_card_origem in result_cardinalidade_origem:
             if record_card_origem["quantidadeOrigem"] > 1:
                 cardinalidadeOrigem = "N"
-                print(cardinalidadeOrigem)
+                # print(cardinalidadeOrigem)
                 break
             else:
                 cardinalidadeOrigem = 1
-                print(cardinalidadeOrigem)
+                # print(cardinalidadeOrigem)
 
         result_cardinalidade_destino = tx.run( #Retorna as propriedades (destino) que estão associadas a tantos nodos (origem)
             f"match(p:{origem})-[:{tipo_relacionamento}]->(m:{destino}) "
-            "return properties(m), count(p) as quantidadeDestino "
+            f"WITH m, count(p) AS quantidadeDestino "
+            f"WHERE quantidadeDestino > 1 "
+            "return properties(m), quantidadeDestino LIMIT 1 "
         )
 
         cardinalidadeDestino = 0
         for record_card_destino in result_cardinalidade_destino:
             if record_card_destino["quantidadeDestino"] > 1:
                 cardinalidadeDestino = "N"
-                print(cardinalidadeDestino)
+                # print(cardinalidadeDestino)
                 break
             else:
                 cardinalidadeDestino = 1
-                print(cardinalidadeDestino)
+                # print(cardinalidadeDestino)
 
         #OPCIONALIDADE
         result_op_destino = tx.run(
@@ -160,6 +173,7 @@ def coletar_relacionamentos(tx, nos):
         cardinalidade = f"({1 if countOP_destino == 0 else 0}:{"N" if cardinalidadeDestino == "N" else 1});({1 if countOP_origem == 0 else 0}:{"N" if cardinalidadeOrigem == "N" else 1})"
         nos[rotulo_origem].atualizar_cardinalidade(tipo_relacionamento, cardinalidade)
         print(countOP_origem, countOP_destino, cardinalidadeOrigem, cardinalidadeDestino)
+        print(f"{origem}({countOP_origem}), {destino}({countOP_destino}), {origem}({cardinalidadeOrigem}), {destino}({cardinalidadeDestino}) = {tipo_relacionamento}")
 
 def consultar_e_identificar_supertipo_subtipo(tx, rotulos):
     supertipo = None
@@ -184,11 +198,9 @@ def consultar_e_identificar_supertipo_subtipo(tx, rotulos):
                 maior_quantidade = quantidade
 
     #subtipo como o rótulo restante
-    # print(rotulos)
     for rotulo in rotulos:
         if rotulo != supertipo:
-            subtipos.append(rotulo)
-            # print(f"{rotulo} é o supertipo")    
+            subtipos.append(rotulo) 
 
     return supertipo, subtipos
 
@@ -258,3 +270,5 @@ def definir_enum(quantidadeNosTotal, info_propriedade, no):
     if ((verificar < threshold) or len(info_propriedade["values"]) <= 1):
         info_propriedade["is_enum"] = False
         info_propriedade["values"].clear()
+    else:
+        return
