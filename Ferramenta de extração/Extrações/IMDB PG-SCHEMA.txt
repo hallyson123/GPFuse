@@ -1,0 +1,42 @@
+Tempo de execução: 4467.55 segundos
+CREATE GRAPH TYPE TesteGraphType STRICT {
+(PersonType : Person {
+    nconst STR,
+    OPTIONAL primaryName STR,
+    OPTIONAL knownForTitles ARRAY str (1, 4),
+    OPTIONAL primaryProfession ARRAY str (1, 3),
+    OPTIONAL birthYear INT,
+    OPTIONAL deathYear INT}),
+
+(MovieType : Movie {
+    tconst STR,
+    OPTIONAL genres ARRAY str (1, 3),
+    OPTIONAL startYear INT,
+    titleType STR,
+    OPTIONAL originalTitle STR,
+    isAdult INT,
+    OPTIONAL primaryTitle STR,
+    OPTIONAL runtimeMinutes INT,
+    OPTIONAL endYear INT})
+
+(:Person)-[actressType (0:N);(0:N)]->(:MovieType),
+(:Person)-[directorType (0:N);(0:N)]->(:MovieType),
+(:Person)-[composerType (0:N);(0:N)]->(:MovieType),
+(:Person)-[producerType (0:N);(0:N)]->(:MovieType),
+(:Person)-[editorType (0:N);(0:N)]->(:MovieType),
+(:Person)-[actorType (0:N);(0:N)]->(:MovieType),
+(:Person)-[cinematographerType (0:N);(0:N)]->(:MovieType),
+(:Person)-[writerType (0:N);(0:N)]->(:MovieType),
+(:Person)-[selfType (0:N);(0:N)]->(:MovieType),
+(:Person)-[production_designerType (0:N);(0:N)]->(:MovieType),
+(:Person)-[archive_footageType (0:N);(0:N)]->(:MovieType),
+(:Person)-[casting_directorType (0:N);(0:N)]->(:MovieType),
+(:Person)-[archive_soundType (0:N);(0:N)]->(:MovieType),
+
+FOR (x:PersonType) MANDATORY x.nconst,
+FOR (x:MovieType) MANDATORY x.tconst,
+FOR (x:MovieType) MANDATORY x.titleType,
+FOR (x:MovieType) MANDATORY x.isAdult
+}
+
+
