@@ -1,6 +1,7 @@
 from ClassNo import No
 
 MAX_ENUMERATE = 20
+THRESHOLD = 0.9
 
 def percorrer_nos_e_armazenar_info(tx, nos):
     result = tx.run(

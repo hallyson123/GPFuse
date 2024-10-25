@@ -1,0 +1,73 @@
+CREATE GRAPH TYPE TesteGraphType STRICT {
+(PessoaType : Pessoa {
+    OPTIONAL peso FLOAT,
+    *CPF INT,
+    *nome STR,
+    OPTIONAL hobbies ARRAYint (1, 10),
+    OPTIONAL *lista_propriedade ARRAYint (1, 10)}),
+
+(Pessoa & DiretorType : Pessoa & Diretor {
+    *CPF INT,
+    *nome STR,
+    sem_compartilhamento STR,
+    *lista_propriedade ARRAYint (1, 10)}),
+
+(Pessoa & ProdutorType : Pessoa & Produtor {
+    *CPF INT,
+    *nome STR,
+    sem_compartilhamento STR,
+    *lista_propriedade ARRAYint (1, 10)}),
+
+(Pessoa & AvaliadorType : Pessoa & Avaliador {
+    *CPF INT,
+    *nome STR,
+    sem_compartilhamento STR,
+    *lista_propriedade ARRAYint (1, 10)}),
+
+(FilmeType : Filme {
+    titulo STR}),
+
+(FinanciadorType : Financiador {
+    nome ENUM ("financiador_3", "financiador_4", "financiador_5", "financiador_7", "financiador_1", "financiador_8", "financiador_9", "financiador_6", "financiador_2", "financiador_10")}),
+
+(StreamingType : Streaming {
+    nome ENUM ("Disney+", "Amazon Prime", "Apple TV+", "Paramount+", "HBO Max", "Globoplay", "Netflix", "Star+")}),
+
+(:Pessoa)-[ATUAType (1:N);(1:N)]->(:FilmeType),
+(:Pessoa | Diretor)-[DIRIGEType (1:N);(1:N)]->(:FilmeType),
+(:Diretor)-[DIRIGEType (1:N);(0:N)]->(:FilmeType),
+(:Pessoa | Produtor)-[PRODUZType (1:N);(1:N)]->(:FilmeType),
+(:Pessoa | Avaliador)-[AVALIAType (1:N);(1:N)]->(:FilmeType),
+(:Financiador)-[PATROCINAType (0:1);(1:1)]->(:FilmeType),
+(:Streaming)-[CONTEMType (1:N);(1:N)]->(:FilmeType),
+
+FOR (x:PessoaType) MANDATORY x.CPF,
+FOR (x:PessoaType) MANDATORY x.nome,
+FOR (x:Pessoa:DiretorType) MANDATORY x.CPF,
+FOR (x:Pessoa:DiretorType) MANDATORY x.nome,
+FOR (x:Pessoa:DiretorType) MANDATORY x.sem_compartilhamento,
+FOR (x:Pessoa:DiretorType) MANDATORY x.lista_propriedade,
+FOR (x:DiretorType) MANDATORY x.CPF,
+FOR (x:DiretorType) MANDATORY x.nome,
+FOR (x:DiretorType) MANDATORY x.lista_propriedade,
+FOR (x:Pessoa:ProdutorType) MANDATORY x.CPF,
+FOR (x:Pessoa:ProdutorType) MANDATORY x.nome,
+FOR (x:Pessoa:ProdutorType) MANDATORY x.sem_compartilhamento,
+FOR (x:Pessoa:ProdutorType) MANDATORY x.lista_propriedade,
+FOR (x:Pessoa:AvaliadorType) MANDATORY x.CPF,
+FOR (x:Pessoa:AvaliadorType) MANDATORY x.nome,
+FOR (x:Pessoa:AvaliadorType) MANDATORY x.sem_compartilhamento,
+FOR (x:Pessoa:AvaliadorType) MANDATORY x.lista_propriedade,
+FOR (x:FilmeType) MANDATORY x.titulo,
+FOR (x:FinanciadorType) MANDATORY x.nome,
+FOR (x:StreamingType) MANDATORY x.nome,
+FOR (x:TesteType) MANDATORY x.teste_propri,
+FOR (x:Teste1Type) MANDATORY x.cpf,
+FOR (x:Teste1Type) MANDATORY x.nome,
+FOR (x:TType) MANDATORY x.nome,
+
+FOR (x:PessoaType) SINGLETON x.(CPF, nome),
+FOR (x:FilmeType) SINGLETON x.titulo,
+FOR (x:FinanciadorType) SINGLETON x.nome,
+FOR (x:StreamingType) SINGLETON x.nome
+}

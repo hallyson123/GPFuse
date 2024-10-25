@@ -1,140 +1,125 @@
-import re
+import pickle
 
-# Função para ler o arquivo de entrada contendo o PG-Schema Like
-def ler_pg_schema(file_path):
-    with open(file_path, 'r') as f:
-        return f.read()
-
-# Função para parsear o esquema do PG-Schema Like
-def analisar_pg_schema(pg_schema):
-    nodos = {}
-    relacionamentos = []
-    constraints = []
-
-    # capturar os nodos e suas propriedades
-    nodo_pattern = re.compile(r"\((\w+Type) : (\w+) \{([^\}]*)\}\)")
-    rel_pattern = re.compile(r"\(:([^\)]+)\)-\[([^\]]+)\]->\(:([^\)]+)\)")
-    mandatory_pattern = re.compile(r"FOR \(x:(\w+Type)\) MANDATORY x.(\w+)")
-    singleton_pattern = re.compile(r"FOR \(x:(\w+Type)\) SINGLETON x.(\w+)")
-
-    # Parse nodos
-    for match in nodo_pattern.finditer(pg_schema):
-        node_type, node_name, properties = match.groups()
-        props = [prop.strip() for prop in properties.split(',')]
-        nodos[node_name] = {'type': node_type, 'properties': props}
-
-    # Parse relacionamentos
-    for match in rel_pattern.finditer(pg_schema):
-        origem, rel_type, destino = match.groups()
-        relacionamentos.append({'origem': origem, 'relacionamento': rel_type, 'destino': destino})
-
-    # Parse constraints MANDATORY e SINGLETON
-    for match in mandatory_pattern.finditer(pg_schema):
-        node_type, prop = match.groups()
-        constraints.append({'type': 'MANDATORY', 'node': node_type, 'property': prop})
-
-    for match in singleton_pattern.finditer(pg_schema):
-        node_type, prop = match.groups()
-        constraints.append({'type': 'SINGLETON', 'node': node_type, 'property': prop})
-
-    return nodos, relacionamentos, constraints
-
-# Função para criar as regras de conversão a partir do PG-Schema
-def criar_regras_de_conversao(nodos, relacionamentos, constraints):
-    regras = []
-    
-    # Regras de conversão para nodos (tabelas)
-    for node_name, node_info in nodos.items():
-        regra_nodo = f"Convertendo o nodo '{node_name}' para a tabela '{node_name.lower()}' com as propriedades {node_info['properties']}"
-        regras.append(regra_nodo)
-
-    # Regras para relacionamentos (chaves estrangeiras)
-    for rel in relacionamentos:
-        regra_rel = f"Converter o relacionamento '{rel['relacionamento']}' entre '{rel['origem']}' e '{rel['destino']}' para chave estrangeira em '{rel['origem'].lower()}'"
-        regras.append(regra_rel)
-
-    # Regras para constraints MANDATORY e SINGLETON
-    for constraint in constraints:
-        if constraint['type'] == 'MANDATORY':
-            regra_mandatory = f"A propriedade '{constraint['property']}' em '{constraint['node'].lower()}' deve ser NOT NULL"
-            regras.append(regra_mandatory)
-        elif constraint['type'] == 'SINGLETON':
-            regra_singleton = f"A propriedade '{constraint['property']}' em '{constraint['node'].lower()}' deve ser UNIQUE"
-            regras.append(regra_singleton)
-
-    return regras
-
-# Função para converter nodos e relacionamentos para tabelas e chaves
-def converter_para_relacional(nodos, relacionamentos, constraints):
-    tabelas = {}
-    foreign_keys = []
-
-    # Converter nodos para tabelas
-    for node_name, node_info in nodos.items():
-        tabela_nome = node_name.lower()  # Nome da tabela
-        tabelas[tabela_nome] = []
-        
-        for prop in node_info['properties']:
-            tabelas[tabela_nome].append(prop)
-
-    # Adicionar constraints de MANDATORY e SINGLETON
-    for constraint in constraints:
-        tabela_nome = constraint['node'].lower().replace("type", "")
-        if constraint['type'] == "MANDATORY":
-            for coluna in tabelas[tabela_nome]:
-                if coluna == constraint['property']:
-                    tabelas[tabela_nome].append(f"{coluna} NOT NULL")
-        if constraint['type'] == "SINGLETON":
-            tabelas[tabela_nome].append(f"UNIQUE ({constraint['property']})")
-
-    # Converter relacionamentos para tabelas ou chaves estrangeiras
-    for rel in relacionamentos:
-        origem = rel['origem'].lower()
-        destino = rel['destino'].lower()
-        foreign_keys.append(f"ALTER TABLE {origem} ADD FOREIGN KEY ({destino}_id) REFERENCES {destino}(id);")
-
-    return tabelas, foreign_keys
-
-# Função para salvar as regras de conversão em um arquivo
-def salvar_regras(regras, file_path='GraphRel/regras_conversão.txt'):
-    with open(file_path, 'w') as f:
-        for regra in regras:
-            f.write(f"{regra}\n")
-    print(f"Regras de conversão salvas em {file_path}")
-
-# Função principal da ferramenta
-def graphRel(file_path):
-    # 1. Ler o arquivo PG-Schema Like
-    pg_schema = ler_pg_schema(file_path)
-
-    # 2. Parsear o esquema
-    nodos, relacionamentos, constraints = analisar_pg_schema(pg_schema)
-
-    # 3. Criar regras de conversão
-    regras = criar_regras_de_conversao(nodos, relacionamentos, constraints)
-    
-    # 4. Salvar as regras em um arquivo
-    salvar_regras(regras)
-
-    # 5. Converter para modelo relacional
-    tabelas, foreign_keys = converter_para_relacional(nodos, relacionamentos, constraints)
-
-    # 6. Gerar o script SQL
+# gerar o script SQL
+def gerar_script_sql(pg_schema_dict):
     script_sql = ""
-    for tabela, colunas in tabelas.items():
-        script_sql += f"CREATE TABLE {tabela} (\n"
-        script_sql += "  id INT PRIMARY KEY,\n"
-        script_sql += "  " + ",\n  ".join(colunas) + "\n"
-        script_sql += ");\n\n"
-    
-    for fk in foreign_keys:
-        script_sql += fk + "\n"
 
-    # 7. Salvar o script SQL em um arquivo
-    with open('GraphRel/graph_to_rel.sql', 'w') as f:
-        f.write(script_sql)
+    script_sql += "CREATE DATABASE TesteRel; \n"
+    script_sql += "\c TesteRel\n\n"
 
-    print("Migração concluída. Script SQL gerado: graph_to_rel.sql")
+    # Criar tipo ENUM
+    for node_name, node_data in pg_schema_dict["nodes"].items():
+        for prop, prop_data in node_data["properties"].items():
+            if prop_data["is_enum"]:
+                node = ''.join(node_name)
+                tipo_enum = f"{node}_{prop}_enum"
+                prop_data["typeEnum"] = tipo_enum
+                script_sql += f"CREATE TYPE {tipo_enum.upper()} AS ENUM({prop_data['values']})\n"
 
-file_path = "GraphRel/pg_schema.txt"  # Arquivo contendo o PG-Schema Like
-graphRel(file_path)
+    script_sql += "\n"
+
+    # Iterar sobre os nós e criar tabelas
+    for node_name, node_data in pg_schema_dict["nodes"].items():
+        if len(node_name) > 1:
+            node = '_'.join(node_name)
+        else:
+            node = ''.join(node_name)
+        tabela_nome = node.lower()
+
+        script_sql += f"CREATE TABLE {tabela_nome} (\n"
+        primary_key_set = False 
+
+        # Adicionar ID como primaria caso não tenha PK
+        if not node_data["uniqueProperties"]:
+            script_sql += "  id SERIAL PRIMARY KEY,\n"
+            primary_key_set = True
+
+        # Adicionar as colunas da tabela com as propriedades
+        for prop, prop_data in node_data["properties"].items():
+            # Determinar tipo da coluna
+            tipo = prop_data["type"]
+            if tipo == "array":
+                tipo = f"{prop_data['typeList']} ARRAY[{prop_data['minList']}, {prop_data['maxList']}]"
+            if tipo == "str":
+                if prop_data["tamStr"] < 100:
+                    tipo = f"VARCHAR(100)"
+                else:
+                    tipo = f"VARCHAR({prop_data["tamStr"]})"
+            if tipo == "int":
+                tipo = "integer"
+            if tipo == "float":
+                tipo = f"real"
+
+            if prop_data["is_enum"]:
+                tipo = prop_data["typeEnum"]
+
+            # Adicionar constraints de unicidade
+            if prop_data["unique"]:
+                tipo += " UNIQUE"
+            # Adicionar constraints de obrigatoriedade
+            if not prop_data["optional"]:
+                tipo += " NOT NULL"
+
+            script_sql += f"  {prop} {tipo.upper()},\n"
+
+        # Chave primaria
+        if node_data["uniqueProperties"] and not primary_key_set:
+            if len(node_data["uniqueProperties"]) == 1:
+                prop_primary = node_data["uniqueProperties"][0]
+                script_sql += f"  CONSTRAINT pk_{node} PRIMARY KEY ({prop_primary}) \n"
+            else:
+            # Chave composta
+                chave_composta = ', '.join(node_data["uniqueProperties"])
+                script_sql += f"  CONSTRAINT pk_{node} PRIMARY KEY ({chave_composta}), \n"
+            primary_key_set = True
+
+        script_sql = script_sql.rstrip(",\n")
+        script_sql += "\n);\n\n"
+
+        # Especialização (filho recebe FK do pai)
+        if len(node_name) > 1:
+            pai_tuple = node_name[0]
+            pai = ''.join(pai_tuple)
+            pai_key = (pai,)
+
+            pai_fk = pg_schema_dict["nodes"][pai_key]["uniqueProperties"]  # Chaves únicas do pai
+            fk_columns = []  # Armazena as colunas que formam a FK
+
+            for prop in pai_fk:
+                tipo_pai = pg_schema_dict["nodes"][pai_key]["properties"][prop]["type"]
+                tam = pg_schema_dict["nodes"][pai_key]["properties"][prop]["tamStr"]
+                if tipo_pai == "str":
+                    if tam < 100:
+                        tipo_pai = "VARCHAR(100)"
+                    else:
+                        tipo_pai = f"VARCHAR({tam})"
+                if tipo_pai == "float":
+                    tipo_pai = "REAL"
+                if tipo_pai == "int":
+                    tipo_pai = "INTEGER"
+
+                script_sql += f"ALTER TABLE {tabela_nome} ADD COLUMN {pai.lower()}_{prop} {tipo_pai.upper()};\n"
+                fk_columns.append(f"{pai.lower()}_{prop}")
+
+            # Criar a constraint da FK
+            fk_columns_str = ", ".join(fk_columns)
+            pai_columns_str = ", ".join(pai_fk)
+            script_sql += f"ALTER TABLE {tabela_nome} ADD CONSTRAINT fk_{tabela_nome}_{pai.lower()} FOREIGN KEY ({fk_columns_str}) REFERENCES {pai.lower()}({pai_columns_str});\n\n"
+
+    return script_sql
+
+# Carregar o dicionário
+file_path = "GraphRel/nos_dump.pkl"
+# file_path = "GraphRel/airbnb.pkl"
+
+with open(file_path, "rb") as f:
+    pg_schema_dict = pickle.load(f)
+
+# Gerar o script SQL
+script_sql = gerar_script_sql(pg_schema_dict)
+
+# Salvar o script em um arquivo SQL
+with open("GraphRel/graph_to_rel.sql", "w") as f:
+    f.write(script_sql)
+
+print("Script SQL gerado com sucesso: graph_to_rel.sql")
