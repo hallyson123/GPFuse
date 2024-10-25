@@ -1,17 +1,17 @@
 from ClassNo import No
 
-MAX_ENUMERATE = 5
+MAX_ENUMERATE = 20
 
 def percorrer_nos_e_armazenar_info(tx, nos):
     result = tx.run(
         "MATCH (p)"
-        "RETURN labels(p) AS nodeType, properties(p) AS props LIMIT 100000"
+        "RETURN labels(p) AS nodeType, properties(p) AS props"
     )
     i = 0
     for record in result:
         i += 1
         rotulos = tuple(record["nodeType"])
-        print(f"Nodos: {rotulos} {i}")
+        # print(f"Nodos: {rotulos} {i}")
         if rotulos not in nos:
             nos[rotulos] = No(rotulos)
         nos[rotulos].quantidade += 1  # incrementar a quantidade
@@ -112,7 +112,7 @@ def coletar_relacionamentos(tx, nos):
         origem = ':'.join(rotulo_origem)
         destino = ':'.join(rotulo_destino)
 
-        print(f"Rel: {origem} {i}")
+        # print(f"Rel: {origem} {i}")
 
         if rotulo_origem not in nos:
             nos[rotulo_origem] = No(rotulo_origem)
@@ -153,6 +153,7 @@ def coletar_relacionamentos(tx, nos):
                 cardinalidadeDestino = 1
                 # print(cardinalidadeDestino)
 
+        ThresholdOP = 0.9
         #OPCIONALIDADE
         result_op_destino = tx.run(
             f"MATCH (q:{destino}) "
@@ -160,7 +161,12 @@ def coletar_relacionamentos(tx, nos):
             "return count(q) as countOpDestino "
         )
         for record_op_destino in result_op_destino:
-            countOP_destino = record_op_destino["countOpDestino"]
+            countOP_d = record_op_destino["countOpDestino"]
+            verificarOPD = countOP_d / quantidade_origem
+            if verificarOPD >= ThresholdOP:
+                countOP_destino = 1
+            else:
+                countOP_destino = 0
 
         result_op_origem = tx.run(
             f"MATCH (p:{origem}) "
@@ -168,12 +174,25 @@ def coletar_relacionamentos(tx, nos):
             "return count(p) as countOpOrigem "
         )
         for record_op_origem in result_op_origem:
-            countOP_origem = record_op_origem["countOpOrigem"]
+            countOP_o = record_op_origem["countOpOrigem"]
+            verificarOPO = countOP_o / quantidade_origem
+            if verificarOPO >= ThresholdOP:
+                countOP_origem = 1
+            else:
+                countOP_origem = 0
+
 
         cardinalidade = f"({1 if countOP_destino == 0 else 0}:{"N" if cardinalidadeDestino == "N" else 1});({1 if countOP_origem == 0 else 0}:{"N" if cardinalidadeOrigem == "N" else 1})"
         nos[rotulo_origem].atualizar_cardinalidade(tipo_relacionamento, cardinalidade)
-        print(countOP_origem, countOP_destino, cardinalidadeOrigem, cardinalidadeDestino)
-        print(f"{origem}({countOP_origem}), {destino}({countOP_destino}), {origem}({cardinalidadeOrigem}), {destino}({cardinalidadeDestino}) = {tipo_relacionamento}")
+        # print(countOP_origem, countOP_destino, cardinalidadeOrigem, cardinalidadeDestino)
+        # print(f"{origem}({countOP_origem}), {destino}({countOP_destino}), {origem}({cardinalidadeOrigem}), {destino}({cardinalidadeDestino}) = {tipo_relacionamento}")
+
+        # cardinalidade = f"({1 if countOP_destino == 0 else 0}:?);({1 if countOP_origem == 0 else 0}:?)"
+        # nos[rotulo_origem].atualizar_cardinalidade(tipo_relacionamento, cardinalidade)
+
+        # cardinalidade = f"(?:?);(?:?)"
+        # nos[rotulo_origem].atualizar_cardinalidade(tipo_relacionamento, cardinalidade)
+        # print(countOP_origem, countOP_destino, "?", "?")
 
 def consultar_e_identificar_supertipo_subtipo(tx, rotulos):
     supertipo = None
@@ -225,8 +244,11 @@ def marcar_propriedades_compartilhadas(nos):
 
 def retornar_constraint(tx, nos):
     result = tx.run("SHOW CONSTRAINT")
+    
+    constraints_found = False  # Verifica se o comando SHOW CONSTRAINT retorna algo
 
     for record in result:
+        constraints_found = True  # Se o loop entrar, significa que encontrou constraints
         name = record["name"]
         type = record["type"]
         entityType = record["entityType"]
@@ -234,8 +256,6 @@ def retornar_constraint(tx, nos):
         properties = record["properties"]
         ownedIndex = record["ownedIndex"]
         propertyType = record["propertyType"]
-
-        # print(name, type, entityType, labelsOrTypes, properties, ownedIndex, propertyType)
 
         if entityType == "NODE":
             labelsOrTypes_key = tuple(labelsOrTypes)
@@ -253,6 +273,7 @@ def retornar_constraint(tx, nos):
                                 propriedades_do_rotulo[prop]['constraint'] = True
                                 propriedades_do_rotulo[prop]["constraintList"].append(type)
                                 propriedades_do_rotulo[prop]['listConstProp'] = True
+                                propriedades_do_rotulo[prop]['unicidadeNeo4j'] = True
                                 propriedades_do_rotulo[prop]['listProp'].append(prop)  # Adiciona cada propriedade individualmente à listProp
                     else:
                         # Se houver apenas uma propriedade, adicione-a à listProp corretamente
@@ -263,11 +284,25 @@ def retornar_constraint(tx, nos):
                             propriedade["constraintList"].append(type)
                             propriedade["listProp"].append(properties_tupla)  # Adiciona a propriedade individualmente à listProp
 
+    # Se nenhuma constraint foi encontrada
+    if constraints_found == False:
+        for rotulo, no in nos.items():
+            for prop, info_propriedade in no.propriedades.items():
+                if (len(info_propriedade["PropValues"]) == info_propriedade["total"]) and (len(info_propriedade["PropValues"]) / info_propriedade["total"] >= THRESHOLD):
+                    propriedade_unica = True  # assumimos que a propriedade é única
+
+                    # Se a propriedade for única, marcar como constraint
+                    if propriedade_unica:
+                        info_propriedade["constraint"] = True
+                        info_propriedade["constraintList"].append("UNIQUENESS")
+                        nos[rotulo].listaChaveUnica.append(prop)
+
 def definir_enum(quantidadeNosTotal, info_propriedade, no):
-    threshold = (quantidadeNosTotal * 0.1) / 100
+    threshold = (quantidadeNosTotal * 0.1) / 100 
     verificar = (info_propriedade["total"] / no.quantidade)
 
     if ((verificar < threshold) or len(info_propriedade["values"]) <= 1):
+        # print("        Agora Enum é False")
         info_propriedade["is_enum"] = False
         info_propriedade["values"].clear()
     else:

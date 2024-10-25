@@ -7,7 +7,6 @@ print("-----------------------")
 marcar_propriedades_compartilhadas(nos)
 print("-----------------------")
 
-# Exibindo os resultados
 def gerar_saida_pg_schema(nos):
     schema = "CREATE GRAPH TYPE TesteGraphType STRICT {\n"
 
@@ -29,20 +28,30 @@ def gerar_saida_pg_schema(nos):
             if no.quantidade != info_propriedade["total"]:
                 opcional = True
 
+            compartilhada = False
+            if info_propriedade["is_shared"]:
+                compartilhada = True
+
             # Verificar se a propriedade tem constraint MANDATORY
             if "MANDATORY" in info_propriedade["constraintList"]:
                 schema += f"    MANDATORY {propriedade} {tipo_propriedade.upper()},\n"
             # Verificar se a propriedade tem constraint SINGLETON
-            if "SINGLETON" in info_propriedade["constraintList"]:
-                schema += f"    SINGLETON {propriedade} {tipo_propriedade.upper()},\n"
+            # if "SINGLETON" in info_propriedade["constraintList"]:
+            #     schema += f"    SINGLETON {propriedade} {tipo_propriedade.upper()},\n"
 
             if info_propriedade.get("is_enum"):
                 valores_enum = ', '.join(f'"{val}"' for val in info_propriedade.get("values"))
 
                 if opcional:
-                    schema += f"    OPTIONAL {propriedade} ENUM ({valores_enum}),\n"
+                    if compartilhada:
+                        schema += f"    OPTIONAL *{propriedade} ENUM ({valores_enum}),\n"
+                    else:
+                        schema += f"    OPTIONAL {propriedade} ENUM ({valores_enum}),\n"
                 else:
-                    schema += f"    {propriedade} ENUM ({valores_enum}),\n"
+                    if compartilhada:
+                        schema += f"    *{propriedade} ENUM ({valores_enum}),\n"
+                    else:
+                        schema += f"    {propriedade} ENUM ({valores_enum}),\n"
 
             else:
                 # Ajustar o tipo LIST conforme o PG-SCHEMA
@@ -59,14 +68,26 @@ def gerar_saida_pg_schema(nos):
                             tam_max_lista = tamanho
 
                     if opcional:
-                        schema += f"    OPTIONAL {propriedade} {tipo_propriedade.upper()} {tipo_maior_freq} ({tam_min_lista}, {tam_max_lista}),\n"
+                        if compartilhada:
+                            schema += f"    OPTIONAL *{propriedade} {tipo_propriedade.upper()} {tipo_maior_freq} ({tam_min_lista}, {tam_max_lista}),\n"
+                        else:
+                            schema += f"    OPTIONAL {propriedade} {tipo_propriedade.upper()} {tipo_maior_freq} ({tam_min_lista}, {tam_max_lista}),\n"
                     else:
-                        schema += f"    {propriedade} {tipo_propriedade.upper()} {tipo_maior_freq} ({tam_min_lista}, {tam_max_lista}),\n"
+                        if compartilhada:
+                            schema += f"    *{propriedade} {tipo_propriedade.upper()} {tipo_maior_freq} ({tam_min_lista}, {tam_max_lista}),\n"
+                        else:
+                            schema += f"    {propriedade} {tipo_propriedade.upper()} {tipo_maior_freq} ({tam_min_lista}, {tam_max_lista}),\n"
                 else:
                     if opcional:
-                        schema += f"    OPTIONAL {propriedade} {tipo_propriedade.upper()},\n"
+                        if compartilhada:
+                            schema += f"    OPTIONAL *{propriedade} {tipo_propriedade.upper()},\n"
+                        else:
+                            schema += f"    OPTIONAL {propriedade} {tipo_propriedade.upper()},\n"
                     else:
-                        schema += f"    {propriedade} {tipo_propriedade.upper()},\n"
+                        if compartilhada:
+                            schema += f"    *{propriedade} {tipo_propriedade.upper()},\n"
+                        else:
+                            schema += f"    {propriedade} {tipo_propriedade.upper()},\n"
 
         schema = schema.rstrip(",\n")  # Remover a última vírgula e quebra de linha
         schema += "}),\n\n"
@@ -91,31 +112,63 @@ def gerar_saida_pg_schema(nos):
     # Adicionar as constraints FOR do PG-SCHEMA
     schema += "\n\n"
 
+    # Definir as constraints como Singleton ou Mandatory
+    threshold_mandatory = 0.90  # Definir o threshold de 90%
+
     for rotulos, no in nos.items():
         for propriedade, info_propriedade in no.propriedades.items():
-            op = True
-            if no.quantidade == info_propriedade["total"]:
-                op = False
-            if op == False:
+            quantidade_presentes = info_propriedade["total"]  # Quantidade de nodos que possuem a propriedade
+            quantidade_nodos = no.quantidade  # Total de nodos desse tipo
+
+            # Verificar se a propriedade está presente em mais de 90% dos nodos
+            if quantidade_presentes / quantidade_nodos >= threshold_mandatory:
+                # print(quantidade_presentes/quantidade_nodos)
                 rotulos_str = ':'.join(rotulos)
                 schema += f"FOR (x:{rotulos_str}Type) MANDATORY x.{propriedade},\n"
 
     schema += "\n"
 
-    listaProp = []  # Lista para armazenar todas as propriedades da lista
+    # listaProp = []  # Lista para armazenar todas as propriedades da lista
+    
+    singleton_inserido = set()
+
     for rotulos, no in nos.items():
-        print(rotulos)
+        # print(rotulos)
         for propriedade, info_propriedade in no.propriedades.items():
-            print(info_propriedade)
+            # print(info_propriedade["constraint"], info_propriedade["constraintList"], info_propriedade["listProp"], info_propriedade["listConstProp"])
+                    
             if info_propriedade["constraint"] and "UNIQUENESS" in info_propriedade["constraintList"]:
                 rotulos_str = ':'.join(rotulos)
-                
-                if info_propriedade["listConstProp"]:
+
+                listaProp = []
+
+                if len(nos[rotulos].listaChaveUnica):
+                    listaProp.extend(nos[rotulos].listaChaveUnica)  # Adiciona as propriedades à lista
+                    propriedades_concatenadas = ', '.join(listaProp)  # Concatena todas as propriedades em uma única string
+
+                    chave_singleton = (rotulos_str, propriedades_concatenadas)
+
+                    if chave_singleton not in singleton_inserido:
+
+                        if len(listaProp) > 1 and len(listaProp) <= 2:
+                            # print(propriedades_concatenadas)
+                            schema += f"FOR (x:{rotulos_str}Type) SINGLETON x.({propriedades_concatenadas}),\n"
+                        elif len(listaProp) == 1:
+                            schema += f"FOR (x:{rotulos_str}Type) SINGLETON x.{propriedades_concatenadas},\n"
+                    
+                    singleton_inserido.add(chave_singleton)
+                    break
+
+                if info_propriedade["listConstProp"] and info_propriedade['unicidadeNeo4j']:
+                    # print(nos[rotulos].listaChaveUnica)
                     listaProp.extend(info_propriedade["listProp"])  # Adiciona as propriedades à lista
                     propriedades_concatenadas = ', '.join(listaProp)  # Concatena todas as propriedades em uma única string
 
-                    if len(listaProp) > 1:
+                    if len(listaProp) > 1 and len(listaProp) <= 2:
+                        # print(propriedades_concatenadas)
                         schema += f"FOR (x:{rotulos_str}Type) SINGLETON x.({propriedades_concatenadas}),\n"
+                    elif len(listaProp) == 1:
+                        schema += f"FOR (x:{rotulos_str}Type) SINGLETON x.{propriedades_concatenadas},\n"
                 else:
                     schema += f"FOR (x:{rotulos_str}Type) SINGLETON x.{propriedade},\n"
 

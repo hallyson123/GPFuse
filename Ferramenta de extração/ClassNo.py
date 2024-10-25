@@ -1,4 +1,5 @@
-MAX_ENUMERATE = 10
+MAX_ENUMERATE = 20
+THRESHOLD = 0.9
 
 class No:
     def __init__(self, rotulo):
@@ -11,10 +12,11 @@ class No:
         self.cardinalidades = {}
         self.supertipos = []
         self.subtipos = []
+        self.listaChaveUnica = []
 
     def adicionar_propriedade(self, nome, tipo, valor):
         if nome not in self.propriedades:
-            self.propriedades[nome] = {"tipos": {}, "values": set(),"constraint": False, "constraintList": [], "listProp": [], "listConstProp": False, "is_enum": True, "total": 0, "is_list": False, "tamQuantLista": {}, "ModaList": [], "tipos_listas": {}, "is_shared": False}
+            self.propriedades[nome] = {"tipos": {}, "PropValues": set(), "values": set(), "constraint": False, 'unicidadeNeo4j': False, "constraintUniquess": False, "constraintList": [], "listProp": [], "listConstProp": False, "is_enum": True, "total": 0, "is_list": False, "tamQuantLista": {}, "ModaList": [], "tipos_listas": {}, "is_shared": False}
 
         if isinstance(valor, list):
             self.propriedades[nome]["is_list"] = True
@@ -44,6 +46,12 @@ class No:
                 if len(self.propriedades[nome]["values"]) >= MAX_ENUMERATE:
                     self.propriedades[nome]["is_enum"] = False
                     self.propriedades[nome]["values"].clear()
+
+        # cria lista de valores não repetidos para auxiliar a criação de constraints únicas
+        if isinstance(valor, int) or isinstance(valor, str): #floats são descartados
+            if isinstance(valor, str):
+                valor = valor[:20]  # Limita a string a 20 caracteres
+            self.propriedades[nome]["PropValues"].add(valor)
 
     def adicionar_subtipo(self, subtipo):
         self.subtipos.append(subtipo)
