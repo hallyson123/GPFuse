@@ -1,187 +1,184 @@
 from ConexãoBanco import nos, start_time
 from Neo4j import marcar_propriedades_compartilhadas, definir_enum
 import time
+import pickle
+
+THRESHOLD = 0.9
 
 print("-----------------------")
 # Chamar a função para marcar propriedades compartilhadas
 marcar_propriedades_compartilhadas(nos)
 print("-----------------------")
 
-def gerar_saida_pg_schema(nos):
-    schema = "CREATE GRAPH TYPE TesteGraphType STRICT {\n"
+def gerar_pg_schema_dicionario(nos):
+    pg_schema_dict = {
+        "graph_type": "TesteGraphType",
+        "strict": True,
+        "nodes": {},
+        "relationships": [],
+    }
 
-    # percorre sobre os nós e suas propriedades
+    # Preencher o dicionário com as informações dos nós
     for rotulos, no in nos.items():
-        rotulos_str = ' & '.join(rotulos)
-        schema += f"({rotulos_str}Type : {rotulos_str} {{\n"
-
-        # Sobre as propriedades do nó
+        # Adicionar as propriedades do nó
+        propriedades_dict = {}
+        listaProp = []
         for propriedade, info_propriedade in no.propriedades.items():
-            tipo_propriedade = max(info_propriedade["tipos"], key=info_propriedade["tipos"].get)  # tipo da propriedade com a maior ocorrência
+            tipo_propriedade = max(info_propriedade["tipos"], key=info_propriedade["tipos"].get) # Tipo mais presente
 
-            # Verificar se a propriedade é uma enumeração
-            quantidadeNosTotal = no.quantidade
-            definir_enum(quantidadeNosTotal, info_propriedade, no)
+            lista = None
+            tipo_maior_freq = None
+            tam_max_lista = None
+            tam_min_lista = None
+            if info_propriedade["is_list"]:
+                tipo_propriedade = "array"
+                tipo_maior_freq = max(info_propriedade["tipos_listas"], key=info_propriedade["tipos_listas"].get)
+                tam_min_lista = float('inf')
+                tam_max_lista = float('-inf')
 
-            # Verificar se a propriedade é opcional
-            opcional = False
-            if no.quantidade != info_propriedade["total"]:
+                for tamanho in info_propriedade["tamQuantLista"]:
+                    if tamanho < tam_min_lista:
+                        tam_min_lista = tamanho
+                    if tamanho > tam_max_lista:
+                        tam_max_lista = tamanho
+
+            # Armazenar o tamanho máximo de uma String
+            tamanho_str = 0
+            if tipo_propriedade == "str":
+                tamanho_str = max(len(valor) for valor in info_propriedade["PropValues"])
+            
+            # Definir Enum
+            valores_enum = ', '.join(f'"{val}"' for val in info_propriedade.get("values"))
+            definir_enum(no.quantidade, info_propriedade, no)
+
+            # Constraint de obrigatoriedade
+            if info_propriedade["total"] / no.quantidade >= THRESHOLD:
+                opcional = False
+            else:
                 opcional = True
 
-            compartilhada = False
-            if info_propriedade["is_shared"]:
-                compartilhada = True
+            # Constraint de unicidade
+            unique = False
+            if info_propriedade["constraint"] and "UNIQUENESS" in info_propriedade["constraintList"]:
+                if len(nos[rotulos].listaChaveUnica):
+                    listaProp.extend(nos[rotulos].listaChaveUnica)
+                    unique = True
+                else: 
+                    listaProp.extend(info_propriedade["listProp"])
+                    unique = True
 
-            # Verificar se a propriedade tem constraint MANDATORY
-            if "MANDATORY" in info_propriedade["constraintList"]:
-                schema += f"    MANDATORY {propriedade} {tipo_propriedade.upper()},\n"
-            # Verificar se a propriedade tem constraint SINGLETON
-            # if "SINGLETON" in info_propriedade["constraintList"]:
-            #     schema += f"    SINGLETON {propriedade} {tipo_propriedade.upper()},\n"
+            propriedades_dict[propriedade] = {
+                "type": tipo_propriedade,
+                "tamStr": tamanho_str,
+                "optional": opcional,
+                "unique": unique,
+                "shared": info_propriedade["is_shared"],
+                "is_enum": info_propriedade["is_enum"],
+                "values": valores_enum,
+                "is_list": info_propriedade["is_list"],
+                "typeList": tipo_maior_freq,
+                "maxList": tam_max_lista,
+                "minList": tam_min_lista
+            }
 
-            if info_propriedade.get("is_enum"):
-                valores_enum = ', '.join(f'"{val}"' for val in info_propriedade.get("values"))
+        # Adicionar o nó ao dicionário final
+        rotulos_str = ' & '.join(rotulos)
+        node_type = f"{rotulos_str}Type"
+        pg_schema_dict["nodes"][rotulos] = {
+            "type": node_type,
+            "properties": propriedades_dict,
+            "uniqueProperties": listaProp
+        }
 
-                if opcional:
-                    if compartilhada:
-                        schema += f"    OPTIONAL *{propriedade} ENUM ({valores_enum}),\n"
-                    else:
-                        schema += f"    OPTIONAL {propriedade} ENUM ({valores_enum}),\n"
-                else:
-                    if compartilhada:
-                        schema += f"    *{propriedade} ENUM ({valores_enum}),\n"
-                    else:
-                        schema += f"    {propriedade} ENUM ({valores_enum}),\n"
-
-            else:
-                # Ajustar o tipo LIST conforme o PG-SCHEMA
-                if info_propriedade["is_list"]:
-                    tipo_propriedade = "array"
-                    tipo_maior_freq = max(info_propriedade["tipos_listas"], key=info_propriedade["tipos_listas"].get)  # Pega o tipo mais frequente armazanado na lista
-                    tam_min_lista = float('inf')
-                    tam_max_lista = float('-inf')
-
-                    for tamanho in info_propriedade["tamQuantLista"]:
-                        if tamanho < tam_min_lista:
-                            tam_min_lista = tamanho
-                        if tamanho > tam_max_lista:
-                            tam_max_lista = tamanho
-
-                    if opcional:
-                        if compartilhada:
-                            schema += f"    OPTIONAL *{propriedade} {tipo_propriedade.upper()} {tipo_maior_freq} ({tam_min_lista}, {tam_max_lista}),\n"
-                        else:
-                            schema += f"    OPTIONAL {propriedade} {tipo_propriedade.upper()} {tipo_maior_freq} ({tam_min_lista}, {tam_max_lista}),\n"
-                    else:
-                        if compartilhada:
-                            schema += f"    *{propriedade} {tipo_propriedade.upper()} {tipo_maior_freq} ({tam_min_lista}, {tam_max_lista}),\n"
-                        else:
-                            schema += f"    {propriedade} {tipo_propriedade.upper()} {tipo_maior_freq} ({tam_min_lista}, {tam_max_lista}),\n"
-                else:
-                    if opcional:
-                        if compartilhada:
-                            schema += f"    OPTIONAL *{propriedade} {tipo_propriedade.upper()},\n"
-                        else:
-                            schema += f"    OPTIONAL {propriedade} {tipo_propriedade.upper()},\n"
-                    else:
-                        if compartilhada:
-                            schema += f"    *{propriedade} {tipo_propriedade.upper()},\n"
-                        else:
-                            schema += f"    {propriedade} {tipo_propriedade.upper()},\n"
-
-        schema = schema.rstrip(",\n")  # Remover a última vírgula e quebra de linha
-        schema += "}),\n\n"
-
-    # Iterar sobre os relacionamentos
-    relacionamentos = set()  # Conjunto para armazenar os tipos de relacionamento já adicionados
+    # Preencher o dicionário com os relacionamentos
     for rotulos, no in nos.items():
         for tipo_relacionamento, relacoes in no.relacionamentos.items():
-            for destino, quantidade_rel in relacoes:
-                destinos_str = ' & '.join(destino)
-                cardinalidade = no.cardinalidades.get(tipo_relacionamento, "")  # Verificar se há cardinalidade
-                tipos_origem = ' | '.join(rotulos) if len(rotulos) > 1 else rotulos[0]
+            for destino, _ in relacoes:
+                pg_schema_dict["relationships"].append({
+                    "origin": rotulos,
+                    "relationship_type": tipo_relacionamento,
+                    "destination": destino,
+                    "cardinality": no.cardinalidades.get(tipo_relacionamento, "")
+                })
+                
+    return pg_schema_dict
 
-                # Verificar se o tipo de relacionamento já foi adicionado anteriormente
-                if (tipos_origem, tipo_relacionamento, destinos_str) not in relacionamentos:
-                    # Adicionar relacionamento apenas se não tiver sido adicionado antes
-                    schema += f"(:{tipos_origem})-[{tipo_relacionamento}Type {cardinalidade}]->(:{destinos_str}Type),\n"
-                    relacionamentos.add((tipos_origem, tipo_relacionamento, destinos_str))
+def gerar_saida_pg_schema(pg_schema_dict):
+    schema = f"CREATE GRAPH TYPE {pg_schema_dict['graph_type']} "
+    schema += "STRICT {\n" if pg_schema_dict['strict'] else "{\n"
 
-    # Remover a última vírgula e quebra de linha
-    schema = schema.rstrip(",\n")
-    # Adicionar as constraints FOR do PG-SCHEMA
-    schema += "\n\n"
+    # Adicionar nós e suas propriedades
+    for node, info in pg_schema_dict['nodes'].items():
+        node_str = ' & '.join(node)
+        schema += f"({info['type']} : {node_str} {{\n"
 
-    # Definir as constraints como Singleton ou Mandatory
-    threshold_mandatory = 0.90  # Definir o threshold de 90%
+        for prop, prop_info in info['properties'].items():
+            tipo_propriedade = prop_info['type'].upper()
+            lista_max_min = f"{prop_info['typeList']} {prop_info['minList'], prop_info['maxList']}"
+            lista = {lista_max_min} if prop_info['is_list'] else ""
+            lista_ = ', '.join(lista)
+            opcional = "OPTIONAL " if prop_info['optional'] else ""
+            compartilhada = "*" if prop_info['shared'] else ""
+            enum_str = ""
+            if prop_info['is_enum']:
+                enum_str = f"ENUM ({info['properties'][prop]['values']})"
+                schema += f"    {opcional}{compartilhada}{prop} {enum_str},\n"
+            else:
+                schema += f"    {opcional}{compartilhada}{prop} {tipo_propriedade}{lista_}{enum_str},\n"
 
-    for rotulos, no in nos.items():
-        for propriedade, info_propriedade in no.propriedades.items():
-            quantidade_presentes = info_propriedade["total"]  # Quantidade de nodos que possuem a propriedade
-            quantidade_nodos = no.quantidade  # Total de nodos desse tipo
+        schema = schema.rstrip(",\n")
+        schema += "}),\n\n"
 
-            # Verificar se a propriedade está presente em mais de 90% dos nodos
-            if quantidade_presentes / quantidade_nodos >= threshold_mandatory:
-                # print(quantidade_presentes/quantidade_nodos)
-                rotulos_str = ':'.join(rotulos)
-                schema += f"FOR (x:{rotulos_str}Type) MANDATORY x.{propriedade},\n"
+    # Adicionar relacionamentos
+    for rel in pg_schema_dict['relationships']:
+        destino_str = ' & '.join(rel['destination'])
+        origem_str = ' | '.join(rel['origin'])
+        schema += f"(:{origem_str})-[{rel['relationship_type']}Type {rel['cardinality']}]->(:{destino_str}Type),\n"
 
     schema += "\n"
 
-    # listaProp = []  # Lista para armazenar todas as propriedades da lista
-    
-    singleton_inserido = set()
+    # Cosntraint Mandatory
+    for node, info in pg_schema_dict['nodes'].items():
+        node_str = ':'.join(node)
+        node_ = f"{node_str}Type"
+        for prop, prop_info in info['properties'].items():
+            if prop_info['optional'] == False:
+                schema += f"FOR (x:{node_}) MANDATORY x.{prop},\n"
 
-    for rotulos, no in nos.items():
-        # print(rotulos)
-        for propriedade, info_propriedade in no.propriedades.items():
-            # print(info_propriedade["constraint"], info_propriedade["constraintList"], info_propriedade["listProp"], info_propriedade["listConstProp"])
-                    
-            if info_propriedade["constraint"] and "UNIQUENESS" in info_propriedade["constraintList"]:
-                rotulos_str = ':'.join(rotulos)
+    schema += "\n"
 
-                listaProp = []
+    # Constraint Singleton
+    for node, info in pg_schema_dict['nodes'].items():
+            node_str = ':'.join(node)
+            node_ = f"{node_str}Type"
 
-                if len(nos[rotulos].listaChaveUnica):
-                    listaProp.extend(nos[rotulos].listaChaveUnica)  # Adiciona as propriedades à lista
-                    propriedades_concatenadas = ', '.join(listaProp)  # Concatena todas as propriedades em uma única string
+            listaProp = []
+            listaProp.extend(info["uniqueProperties"])
+            propriedades_concatenadas = ', '.join(listaProp)  # Concatena todas as propriedades em uma única string
 
-                    chave_singleton = (rotulos_str, propriedades_concatenadas)
+            if len(info['uniqueProperties']) > 1 and len(info['uniqueProperties']) <= 2:
+                schema += f"FOR (x:{node_}) SINGLETON x.({propriedades_concatenadas}),\n"
+            if len(info['uniqueProperties']) == 1:
+                schema += f"FOR (x:{node_}) SINGLETON x.{propriedades_concatenadas},\n"
 
-                    if chave_singleton not in singleton_inserido:
-
-                        if len(listaProp) > 1 and len(listaProp) <= 2:
-                            # print(propriedades_concatenadas)
-                            schema += f"FOR (x:{rotulos_str}Type) SINGLETON x.({propriedades_concatenadas}),\n"
-                        elif len(listaProp) == 1:
-                            schema += f"FOR (x:{rotulos_str}Type) SINGLETON x.{propriedades_concatenadas},\n"
-                    
-                    singleton_inserido.add(chave_singleton)
-                    break
-
-                if info_propriedade["listConstProp"] and info_propriedade['unicidadeNeo4j']:
-                    # print(nos[rotulos].listaChaveUnica)
-                    listaProp.extend(info_propriedade["listProp"])  # Adiciona as propriedades à lista
-                    propriedades_concatenadas = ', '.join(listaProp)  # Concatena todas as propriedades em uma única string
-
-                    if len(listaProp) > 1 and len(listaProp) <= 2:
-                        # print(propriedades_concatenadas)
-                        schema += f"FOR (x:{rotulos_str}Type) SINGLETON x.({propriedades_concatenadas}),\n"
-                    elif len(listaProp) == 1:
-                        schema += f"FOR (x:{rotulos_str}Type) SINGLETON x.{propriedades_concatenadas},\n"
-                else:
-                    schema += f"FOR (x:{rotulos_str}Type) SINGLETON x.{propriedade},\n"
-
-    schema = schema.rstrip(",\n")  # Remover a última vírgula e quebra de linha
+    schema = schema.rstrip(",\n")
     schema += "\n}"
-
-    end_time = time.time()  # Marcar o tempo de término
-    elapsed_time = end_time - start_time  # Calcular o tempo decorrido
-
-    print(f"Tempo de execução: {elapsed_time:.2f} segundos")
 
     return schema
 
-# gerar a saída PG-SCHEMA
-saida_pg_schema = gerar_saida_pg_schema(nos)
+def salvar_nos_pickle(nos, file_path):
+    with open(file_path, 'wb') as f:
+        pickle.dump(nos, f)
+    print(f"Dicionário 'PG-Schema' salvo em: {file_path}")
+
+# Criar o dicionário de PG-Schema
+pg_schema_dict = gerar_pg_schema_dicionario(nos)
+
+# Gerar a saída do PG-Schema
+saida_pg_schema = gerar_saida_pg_schema(pg_schema_dict)
 print(saida_pg_schema)
+
+file_path = "GraphRel/nos_dump.pkl"
+
+# Salvar o dicionário 'nos' usando pickle
+salvar_nos_pickle(pg_schema_dict, file_path)

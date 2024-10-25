@@ -12,7 +12,7 @@ def percorrer_nos_e_armazenar_info(tx, nos):
     for record in result:
         i += 1
         rotulos = tuple(record["nodeType"])
-        # print(f"Nodos: {rotulos} {i}")
+        print(f"Nodos: {rotulos} {i}")
         if rotulos not in nos:
             nos[rotulos] = No(rotulos)
         nos[rotulos].quantidade += 1  # incrementar a quantidade
@@ -32,16 +32,12 @@ def percorrer_nos_e_armazenar_info(tx, nos):
         if len(rotulos) == 2 or len(rotulos) == 3:
             for rotulo in rotulos:
                 if rotulo in nos[rotulos].supertipos or rotulo in nos[rotulos].subtipos:
-                    # print(f"{rotulo} JA TEM")
                     break
                 else:
                     supertipo, subtipos = consultar_e_identificar_supertipo_subtipo(tx, rotulos)
-                    # print("SUPER:", supertipo)
-                    # print("SUB:", subtipos)
                     if supertipo and subtipos:
                         nos[rotulos].adicionar_supertipo(supertipo)
                         for subtipo in subtipos:
-                            # print("SUB:", subtipo)
                             nos[rotulos].adicionar_subtipo(subtipo)
 
 def percorrerNosLista(tx, nos, rotulos, nome, valor):
@@ -113,8 +109,6 @@ def coletar_relacionamentos(tx, nos):
         origem = ':'.join(rotulo_origem)
         destino = ':'.join(rotulo_destino)
 
-        # print(f"Rel: {origem} {i}")
-
         if rotulo_origem not in nos:
             nos[rotulo_origem] = No(rotulo_origem)
         nos[rotulo_origem].adicionar_relacionamento(tipo_relacionamento, rotulo_destino, quantidade_origem)
@@ -131,11 +125,9 @@ def coletar_relacionamentos(tx, nos):
         for record_card_origem in result_cardinalidade_origem:
             if record_card_origem["quantidadeOrigem"] > 1:
                 cardinalidadeOrigem = "N"
-                # print(cardinalidadeOrigem)
                 break
             else:
                 cardinalidadeOrigem = 1
-                # print(cardinalidadeOrigem)
 
         result_cardinalidade_destino = tx.run( #Retorna as propriedades (destino) que estão associadas a tantos nodos (origem)
             f"match(p:{origem})-[:{tipo_relacionamento}]->(m:{destino}) "
@@ -148,11 +140,9 @@ def coletar_relacionamentos(tx, nos):
         for record_card_destino in result_cardinalidade_destino:
             if record_card_destino["quantidadeDestino"] > 1:
                 cardinalidadeDestino = "N"
-                # print(cardinalidadeDestino)
                 break
             else:
                 cardinalidadeDestino = 1
-                # print(cardinalidadeDestino)
 
         ThresholdOP = 0.9
         #OPCIONALIDADE
@@ -185,15 +175,6 @@ def coletar_relacionamentos(tx, nos):
 
         cardinalidade = f"({1 if countOP_destino == 0 else 0}:{"N" if cardinalidadeDestino == "N" else 1});({1 if countOP_origem == 0 else 0}:{"N" if cardinalidadeOrigem == "N" else 1})"
         nos[rotulo_origem].atualizar_cardinalidade(tipo_relacionamento, cardinalidade)
-        # print(countOP_origem, countOP_destino, cardinalidadeOrigem, cardinalidadeDestino)
-        # print(f"{origem}({countOP_origem}), {destino}({countOP_destino}), {origem}({cardinalidadeOrigem}), {destino}({cardinalidadeDestino}) = {tipo_relacionamento}")
-
-        # cardinalidade = f"({1 if countOP_destino == 0 else 0}:?);({1 if countOP_origem == 0 else 0}:?)"
-        # nos[rotulo_origem].atualizar_cardinalidade(tipo_relacionamento, cardinalidade)
-
-        # cardinalidade = f"(?:?);(?:?)"
-        # nos[rotulo_origem].atualizar_cardinalidade(tipo_relacionamento, cardinalidade)
-        # print(countOP_origem, countOP_destino, "?", "?")
 
 def consultar_e_identificar_supertipo_subtipo(tx, rotulos):
     supertipo = None
@@ -209,7 +190,6 @@ def consultar_e_identificar_supertipo_subtipo(tx, rotulos):
 
         for record in result:
             nome = record["nome"]
-            # print(nome)
             quantidade = record["count"]
 
             # Atualiza o supertipo se a quantidade atual for maior que a quantidade máxima encontrada
@@ -303,7 +283,6 @@ def definir_enum(quantidadeNosTotal, info_propriedade, no):
     verificar = (info_propriedade["total"] / no.quantidade)
 
     if ((verificar < threshold) or len(info_propriedade["values"]) <= 1):
-        # print("        Agora Enum é False")
         info_propriedade["is_enum"] = False
         info_propriedade["values"].clear()
     else:
