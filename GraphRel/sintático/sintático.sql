@@ -4,8 +4,6 @@ CREATE DATABASE TesteRel;
 CREATE TYPE DIRETOR_LISTA_PROPRIEDADE_ENUM AS ENUM("597", "430")
 CREATE TYPE FINANCIADOR_NOME_ENUM AS ENUM("financiador_4", "financiador_10", "financiador_2", "financiador_9", "financiador_5", "financiador_6", "financiador_1", "financiador_7", "financiador_3", "financiador_8")
 CREATE TYPE STREAMING_NOME_ENUM AS ENUM("Disney+", "Amazon Prime", "Star+", "Paramount+", "Netflix", "Apple TV+", "Globoplay", "HBO Max")
-CREATE TYPE TESTE1_CPF_ENUM AS ENUM("1234", "123")
-CREATE TYPE TESTE1_NOME_ENUM AS ENUM("arthur", "halls")
 
 CREATE TABLE pessoa (
   peso REAL,
