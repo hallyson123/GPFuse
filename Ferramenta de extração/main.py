@@ -20,13 +20,19 @@ def gerar_pg_schema_dicionario(nos):
 
     # Preencher o dicionário com as informações dos nós
     for rotulos, no in nos.items():
+        # Supertipo seguido de subtipos
+        if len(rotulos) >= 2:
+            # Tupla de supertipo e subtipos
+            chave_ordenada = tuple(no.supertipos + no.subtipos)
+        else:
+            chave_ordenada = tuple(rotulos)
+
         # Adicionar as propriedades do nó
         propriedades_dict = {}
         listaProp = []
         for propriedade, info_propriedade in no.propriedades.items():
             tipo_propriedade = max(info_propriedade["tipos"], key=info_propriedade["tipos"].get) # Tipo mais presente
 
-            lista = None
             tipo_maior_freq = None
             tam_max_lista = None
             tam_min_lista = None
@@ -59,7 +65,7 @@ def gerar_pg_schema_dicionario(nos):
 
             # Constraint de unicidade
             unique = False
-            if info_propriedade["constraint"] and "UNIQUENESS" in info_propriedade["constraintList"]:
+            if info_propriedade["constraint"] and "UNIQUENESS" in info_propriedade["constraintList"] or "NODE_KEY" in info_propriedade["constraintList"]:
                 if len(nos[rotulos].listaChaveUnica):
                     listaProp.extend(nos[rotulos].listaChaveUnica)
                     unique = True
@@ -67,6 +73,13 @@ def gerar_pg_schema_dicionario(nos):
                     listaProp.extend(info_propriedade["listProp"])
                     unique = True
 
+            # Verificar se é necessário fusionar os nodos envolvidos no relacionamento (1;1)
+            merge = False
+            print(rotulos, no.quantidade, propriedade, info_propriedade['total'])
+            if info_propriedade['total'] / no.quantidade > THRESHOLD:
+                merge = True
+            else:
+                merge = False
             propriedades_dict[propriedade] = {
                 "type": tipo_propriedade,
                 "tamStr": tamanho_str,
@@ -78,29 +91,68 @@ def gerar_pg_schema_dicionario(nos):
                 "is_list": info_propriedade["is_list"],
                 "typeList": tipo_maior_freq,
                 "maxList": tam_max_lista,
-                "minList": tam_min_lista
+                "minList": tam_min_lista,
             }
 
         # Adicionar o nó ao dicionário final
-        rotulos_str = ' & '.join(rotulos)
+        rotulos_str = ' & '.join(chave_ordenada)
         node_type = f"{rotulos_str}Type"
-        pg_schema_dict["nodes"][rotulos] = {
+        pg_schema_dict["nodes"][chave_ordenada] = {
             "type": node_type,
             "properties": propriedades_dict,
-            "uniqueProperties": listaProp
+            "uniqueProperties": listaProp,
+            "merge": merge
         }
+        print(pg_schema_dict["nodes"][chave_ordenada])
 
     # Preencher o dicionário com os relacionamentos
     for rotulos, no in nos.items():
         for tipo_relacionamento, relacoes in no.relacionamentos.items():
-            for destino, _ in relacoes:
+            for destino, quantidade, propriedades in relacoes:
+                # Armazenar propriedades chave
+                chaves = []
+                for nome, info_propriedade in propriedades.items():
+                    # Unicidade
+                    if len(info_propriedade['valores_unicos']) / info_propriedade['total'] >= THRESHOLD:
+                        info_propriedade['is_singleton'] = True
+                    info_propriedade['valores_unicos'].clear()
+
+                    # Obrigatoriedade
+                    if info_propriedade['total'] / quantidade >= THRESHOLD:
+                        info_propriedade['is_mandatory'] = True
+
+                    # Enumeração
+                    if len(info_propriedade['valores_enum']) <= 1:
+                        info_propriedade['is_enum'] = False
+                        info_propriedade['valores_enum'].clear()
+
+                    if info_propriedade.get('is_mandatory') and info_propriedade.get('is_singleton'):
+                        chaves.append(nome)
+
+                # Supertipo seguido de subtipos
+                if len(rotulos) >= 2:
+                    # Tupla de supertipo e subtipos
+                    chave_ordenada_origem = tuple(no.supertipos + no.subtipos)
+                else:
+                    chave_ordenada_origem = rotulos
+
+                if len(destino) >= 2:
+                    chave_ordenada_destino = tuple(no.supertipos + no.subtipos)
+                else:
+                    chave_ordenada_destino = destino
+
                 pg_schema_dict["relationships"].append({
-                    "origin": rotulos,
+                    "origin": chave_ordenada_origem,
                     "relationship_type": tipo_relacionamento,
-                    "destination": destino,
-                    "cardinality": no.cardinalidades.get(tipo_relacionamento, "")
+                    "quant": quantidade,
+                    "destination": chave_ordenada_destino,
+                    "cardinality": no.cardinalidades.get(tipo_relacionamento, ""),
+                    "properties": propriedades,
+                    "primary_key": chaves
                 })
-                
+
+                # print(pg_schema_dict["relationships"])
+
     return pg_schema_dict
 
 def gerar_saida_pg_schema(pg_schema_dict):
@@ -114,7 +166,7 @@ def gerar_saida_pg_schema(pg_schema_dict):
 
         for prop, prop_info in info['properties'].items():
             tipo_propriedade = prop_info['type'].upper()
-            lista_max_min = f"{prop_info['typeList']} {prop_info['minList'], prop_info['maxList']}"
+            lista_max_min = f" {prop_info['typeList']} {prop_info['minList'], prop_info['maxList']}"
             lista = {lista_max_min} if prop_info['is_list'] else ""
             lista_ = ', '.join(lista)
             opcional = "OPTIONAL " if prop_info['optional'] else ""
@@ -126,14 +178,43 @@ def gerar_saida_pg_schema(pg_schema_dict):
             else:
                 schema += f"    {opcional}{compartilhada}{prop} {tipo_propriedade}{lista_}{enum_str},\n"
 
-        schema = schema.rstrip(",\n")
+        schema = schema.rstrip(",\n")  # Remove a última vírgula
         schema += "}),\n\n"
 
     # Adicionar relacionamentos
     for rel in pg_schema_dict['relationships']:
         destino_str = ' & '.join(rel['destination'])
         origem_str = ' | '.join(rel['origin'])
-        schema += f"(:{origem_str})-[{rel['relationship_type']}Type {rel['cardinality']}]->(:{destino_str}Type),\n"
+        prop_rel = rel['properties']
+
+        # Cria uma lista para armazenar as propriedades com tipo e contagem
+        propriedades_str = []
+
+        for nome, dados in prop_rel.items():
+            # Verifica se é ENUM
+            # print(nome, dados)
+            if dados.get("is_enum", False):
+                valores_enum = ', '.join(map(str, dados["valores_enum"]))
+                propriedades_str.append(f"{nome}: ENUM ({valores_enum})")
+            
+            elif dados["is_list"]:
+                tipo_item = dados["list_info"]["tipo_item"]
+                tamanho_min = dados["list_info"]["tamanho_min"]
+                tamanho_max = dados["list_info"]["tamanho_max"]
+                propriedades_str.append(f"{nome}: ARRAY {tipo_item} ({tamanho_min}, {tamanho_max})")
+
+            else:
+                tipos_str = ', '.join([f"{tipo} ({count})" for tipo, count in dados["tipos"].items()])
+                propriedades_str.append(f"{nome}: {tipos_str}")
+
+        # Junta as propriedades formatadas em uma string
+        propriedades_formatadas = ', '.join(propriedades_str)
+
+        # Cria o esquema do relacionamento no formato PG-Schema
+        if len(prop_rel) == 0:
+            schema += f"(:{origem_str})-[{rel['relationship_type']}Type {rel['cardinality']}]->(:{destino_str}Type),\n"
+        else:
+            schema += f"(:{origem_str})-[{rel['relationship_type']}Type {{{propriedades_formatadas}}} {rel['cardinality']}]->(:{destino_str}Type),\n"
 
     schema += "\n"
 
@@ -153,7 +234,7 @@ def gerar_saida_pg_schema(pg_schema_dict):
             node_ = f"{node_str}Type"
 
             listaProp = []
-            listaProp.extend(info["uniqueProperties"])
+            listaProp.extend(info["uniqueProperties"])  # Adiciona as propriedades à lista
             propriedades_concatenadas = ', '.join(listaProp)  # Concatena todas as propriedades em uma única string
 
             if len(info['uniqueProperties']) > 1 and len(info['uniqueProperties']) <= 2:
@@ -161,7 +242,7 @@ def gerar_saida_pg_schema(pg_schema_dict):
             if len(info['uniqueProperties']) == 1:
                 schema += f"FOR (x:{node_}) SINGLETON x.{propriedades_concatenadas},\n"
 
-    schema = schema.rstrip(",\n")
+    schema = schema.rstrip(",\n")  # Remover a última vírgula e quebra de linha
     schema += "\n}"
 
     return schema
@@ -177,6 +258,9 @@ pg_schema_dict = gerar_pg_schema_dicionario(nos)
 # Gerar a saída do PG-Schema
 saida_pg_schema = gerar_saida_pg_schema(pg_schema_dict)
 print(saida_pg_schema)
+
+# Dicionário nos, excluido.
+nos.clear()
 
 file_path = "GraphRel/nos_dump.pkl"
 

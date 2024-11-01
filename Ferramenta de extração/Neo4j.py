@@ -12,7 +12,7 @@ def percorrer_nos_e_armazenar_info(tx, nos):
     for record in result:
         i += 1
         rotulos = tuple(record["nodeType"])
-        print(f"Nodos: {rotulos} {i}")
+        # print(f"Nodos: {rotulos} {i}")
         if rotulos not in nos:
             nos[rotulos] = No(rotulos)
         nos[rotulos].quantidade += 1  # incrementar a quantidade
@@ -29,7 +29,7 @@ def percorrer_nos_e_armazenar_info(tx, nos):
                 percorrerNosLista(tx, nos, rotulos, nome, valor)
 
         # Identificar supertipos e subtipos se o nó tiver 2 ou 3 rótulos
-        if len(rotulos) == 2 or len(rotulos) == 3:
+        if len(rotulos) == 2 or len(rotulos) == 3 or len(rotulos) == 4:
             for rotulo in rotulos:
                 if rotulo in nos[rotulos].supertipos or rotulo in nos[rotulos].subtipos:
                     break
@@ -109,9 +109,16 @@ def coletar_relacionamentos(tx, nos):
         origem = ':'.join(rotulo_origem)
         destino = ':'.join(rotulo_destino)
 
-        if rotulo_origem not in nos:
-            nos[rotulo_origem] = No(rotulo_origem)
-        nos[rotulo_origem].adicionar_relacionamento(tipo_relacionamento, rotulo_destino, quantidade_origem)
+        result_prop = tx.run(
+            f"MATCH ()-[rel:{tipo_relacionamento}]->()"
+            "RETURN properties(rel) AS props"
+        )
+        for record_prop in result_prop:
+            propriedades = record_prop["props"]
+
+            if rotulo_origem not in nos:
+                nos[rotulo_origem] = No(rotulo_origem)
+            nos[rotulo_origem].adicionar_relacionamento(tipo_relacionamento, rotulo_destino, quantidade_origem, propriedades)
 
         # #CARDINALIDADE
         result_cardinalidade_origem = tx.run( #Retorna as propriedades (origem) que estão associadas a tantos nodos (destino)
@@ -276,6 +283,7 @@ def retornar_constraint(tx, nos):
                     if propriedade_unica:
                         info_propriedade["constraint"] = True
                         info_propriedade["constraintList"].append("UNIQUENESS")
+                        info_propriedade["constraintList"].append("NODE_KEY")
                         nos[rotulo].listaChaveUnica.append(prop)
 
 def definir_enum(quantidadeNosTotal, info_propriedade, no):
