@@ -3,7 +3,9 @@ from Neo4j import marcar_propriedades_compartilhadas, definir_enum
 import time
 import pickle
 
+MAX_ENUMERATE = 20
 THRESHOLD = 0.9
+THRESHOLD_OCCURRENCE = 0.7
 
 print("-----------------------")
 # Chamar a função para marcar propriedades compartilhadas
@@ -67,19 +69,13 @@ def gerar_pg_schema_dicionario(nos):
             unique = False
             if info_propriedade["constraint"] and "UNIQUENESS" in info_propriedade["constraintList"] or "NODE_KEY" in info_propriedade["constraintList"]:
                 if len(nos[rotulos].listaChaveUnica):
+                    # if nos[rotulos].listaChaveUnica not in listaProp:
                     listaProp.extend(nos[rotulos].listaChaveUnica)
                     unique = True
                 else: 
                     listaProp.extend(info_propriedade["listProp"])
                     unique = True
 
-            # Verificar se é necessário fusionar os nodos envolvidos no relacionamento (1;1)
-            merge = False
-            print(rotulos, no.quantidade, propriedade, info_propriedade['total'])
-            if info_propriedade['total'] / no.quantidade > THRESHOLD:
-                merge = True
-            else:
-                merge = False
             propriedades_dict[propriedade] = {
                 "type": tipo_propriedade,
                 "tamStr": tamanho_str,
@@ -101,9 +97,10 @@ def gerar_pg_schema_dicionario(nos):
             "type": node_type,
             "properties": propriedades_dict,
             "uniqueProperties": listaProp,
-            "merge": merge
+            "supertypes": no.supertipos,
+            "subtypes": no.subtipos,
         }
-        print(pg_schema_dict["nodes"][chave_ordenada])
+        # print(pg_schema_dict["nodes"][chave_ordenada])
 
     # Preencher o dicionário com os relacionamentos
     for rotulos, no in nos.items():
@@ -133,13 +130,38 @@ def gerar_pg_schema_dicionario(nos):
                 if len(rotulos) >= 2:
                     # Tupla de supertipo e subtipos
                     chave_ordenada_origem = tuple(no.supertipos + no.subtipos)
+                    # print(chave_ordenada_origem)
                 else:
                     chave_ordenada_origem = rotulos
 
                 if len(destino) >= 2:
                     chave_ordenada_destino = tuple(no.supertipos + no.subtipos)
+                    print(destino, chave_ordenada_destino)
                 else:
-                    chave_ordenada_destino = destino
+                    chave_ordenada_destino = tuple(destino)
+
+                # print(f"{chave_ordenada_origem}->{chave_ordenada_destino} [{destino}] ({len(destino)})")
+                # print(rotulos, no.quantidade, propriedade, info_propriedade['total'])
+                # print(rotulos, nos[rotulos].quantidade, destino, nos[destino].quantidade, tipo_relacionamento, quantidade)
+                # print(no.cardinalidades[tipo_relacionamento])
+                
+                origem_card, destino_card = no.cardinalidades[tipo_relacionamento].split(';')
+                origem_min, origem_max = origem_card[1:-1].split(':')
+                destino_min, destino_max = destino_card[1:-1].split(':')
+
+                merge = False
+                more_occurrence = None
+                if origem_max == "1" and destino_max == "1":
+                    # Verificar se é necessário fusionar os nodos envolvidos no relacionamento (1;1)
+                    if (quantidade / nos[rotulos].quantidade) > THRESHOLD_OCCURRENCE and (quantidade / nos[destino].quantidade) > THRESHOLD_OCCURRENCE:
+                        merge = True
+
+                    # Maior ocorrencia em origem
+                    elif (quantidade / nos[rotulos].quantidade) > THRESHOLD_OCCURRENCE and (quantidade / nos[destino].quantidade) < THRESHOLD_OCCURRENCE:
+                        more_occurrence = rotulos
+                    # Maior ocorrencia em destino
+                    elif (quantidade / nos[rotulos].quantidade) < THRESHOLD_OCCURRENCE and (quantidade / nos[destino].quantidade) > THRESHOLD_OCCURRENCE:
+                        more_occurrence = destino
 
                 pg_schema_dict["relationships"].append({
                     "origin": chave_ordenada_origem,
@@ -148,7 +170,9 @@ def gerar_pg_schema_dicionario(nos):
                     "destination": chave_ordenada_destino,
                     "cardinality": no.cardinalidades.get(tipo_relacionamento, ""),
                     "properties": propriedades,
-                    "primary_key": chaves
+                    "primary_key": chaves,
+                    "merge": merge,
+                    "more_occurrence": more_occurrence
                 })
 
                 # print(pg_schema_dict["relationships"])
@@ -230,13 +254,14 @@ def gerar_saida_pg_schema(pg_schema_dict):
 
     # Constraint Singleton
     for node, info in pg_schema_dict['nodes'].items():
+            # print(pg_schema_dict['nodes'])
             node_str = ':'.join(node)
             node_ = f"{node_str}Type"
 
             listaProp = []
             listaProp.extend(info["uniqueProperties"])  # Adiciona as propriedades à lista
             propriedades_concatenadas = ', '.join(listaProp)  # Concatena todas as propriedades em uma única string
-
+            # print(info['uniqueProperties'])
             if len(info['uniqueProperties']) > 1 and len(info['uniqueProperties']) <= 2:
                 schema += f"FOR (x:{node_}) SINGLETON x.({propriedades_concatenadas}),\n"
             if len(info['uniqueProperties']) == 1:

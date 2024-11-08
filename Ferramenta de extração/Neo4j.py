@@ -2,6 +2,7 @@ from ClassNo import No
 
 MAX_ENUMERATE = 20
 THRESHOLD = 0.9
+THRESHOLD_OCCURRENCE = 0.7
 
 def percorrer_nos_e_armazenar_info(tx, nos):
     result = tx.run(
