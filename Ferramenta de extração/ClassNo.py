@@ -17,14 +17,27 @@ class No:
 
     def adicionar_propriedade(self, nome, tipo, valor):
         if nome not in self.propriedades:
-            self.propriedades[nome] = {"tipos": {}, "PropValues": set(), "values": set(), "constraint": False, 'unicidadeNeo4j': False, "constraintUniquess": False, "constraintList": [], "listProp": [], "listConstProp": False, "is_enum": True, "total": 0, "is_list": False, "tamQuantLista": {}, "ModaList": [], "tipos_listas": {}, "is_shared": False}
+            self.propriedades[nome] = {"tipos": {}, "valores_propriedade": [], "PropValues": set(), "values": set(), "constraint": False, 'unicidadeNeo4j': False, "constraintUniquess": False, "constraintList": [], "listProp": [], "listConstProp": False, "is_enum": True, "total": 0, "is_list": False, "tamQuantLista": {}, "ModaList": [], "tipos_listas": {}, "is_shared": False}
 
         if isinstance(valor, list):
             self.propriedades[nome]["is_list"] = True
+
+            if isinstance(valor, str):
+                valor = valor[:20]
+
+            self.propriedades[nome]["valores_propriedade"].append(valor)
+            # print(self.propriedades[nome]["valores_propriedade"])
         else:
             self._adicionar_tipo_propriedade(nome, valor)
 
     def _adicionar_tipo_propriedade(self, nome, valor):
+        # Lista com os valores das propriedades
+        
+        if isinstance(valor, str):
+            valor = valor[:20]
+
+        self.propriedades[nome]["valores_propriedade"].append(valor)
+
         self.propriedades[nome]["total"] += 1
 
         tipo = type(valor).__name__

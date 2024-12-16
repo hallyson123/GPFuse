@@ -32,12 +32,16 @@ def gerar_pg_schema_dicionario(nos):
         # Adicionar as propriedades do nó
         propriedades_dict = {}
         listaProp = []
+
         for propriedade, info_propriedade in no.propriedades.items():
             tipo_propriedade = max(info_propriedade["tipos"], key=info_propriedade["tipos"].get) # Tipo mais presente
 
             tipo_maior_freq = None
             tam_max_lista = None
             tam_min_lista = None
+
+            # print(f"{rotulos}, {propriedade}, {info_propriedade["valores_propriedade"]}\n\n")
+
             if info_propriedade["is_list"]:
                 tipo_propriedade = "array"
                 tipo_maior_freq = max(info_propriedade["tipos_listas"], key=info_propriedade["tipos_listas"].get)
@@ -76,6 +80,8 @@ def gerar_pg_schema_dicionario(nos):
                     listaProp.extend(info_propriedade["listProp"])
                     unique = True
 
+            valores_propriedade = info_propriedade["valores_propriedade"]
+
             propriedades_dict[propriedade] = {
                 "type": tipo_propriedade,
                 "tamStr": tamanho_str,
@@ -88,7 +94,9 @@ def gerar_pg_schema_dicionario(nos):
                 "typeList": tipo_maior_freq,
                 "maxList": tam_max_lista,
                 "minList": tam_min_lista,
+                "insert_values": valores_propriedade
             }
+            # print(propriedades_dict[propriedade])
 
         # Adicionar o nó ao dicionário final
         rotulos_str = ' & '.join(chave_ordenada)
@@ -99,6 +107,7 @@ def gerar_pg_schema_dicionario(nos):
             "uniqueProperties": listaProp,
             "supertypes": no.supertipos,
             "subtypes": no.subtipos,
+            "is_spec": False,
         }
         # print(pg_schema_dict["nodes"][chave_ordenada])
 
@@ -163,11 +172,17 @@ def gerar_pg_schema_dicionario(nos):
                     elif (quantidade / nos[rotulos].quantidade) < THRESHOLD_OCCURRENCE and (quantidade / nos[destino].quantidade) > THRESHOLD_OCCURRENCE:
                         more_occurrence = destino
 
+                # Adicionar informações de origem e destino
+                origem_properties = {k: v["valores_propriedade"] for k, v in nos[rotulos].propriedades.items()}
+                destino_properties = {k: v["valores_propriedade"] for k, v in nos[destino].propriedades.items()}
+
                 pg_schema_dict["relationships"].append({
                     "origin": chave_ordenada_origem,
+                    "origin_properties": origem_properties,
                     "relationship_type": tipo_relacionamento,
                     "quant": quantidade,
                     "destination": chave_ordenada_destino,
+                    "destination_properties": destino_properties,
                     "cardinality": no.cardinalidades.get(tipo_relacionamento, ""),
                     "properties": propriedades,
                     "primary_key": chaves,
