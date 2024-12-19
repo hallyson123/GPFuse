@@ -14,10 +14,15 @@ class No:
         self.supertipos = []
         self.subtipos = []
         self.listaChaveUnica = []
+        self.valores_prop_rel = []
 
     def adicionar_propriedade(self, nome, tipo, valor):
         if nome not in self.propriedades:
             self.propriedades[nome] = {"tipos": {}, "valores_propriedade": [], "PropValues": set(), "values": set(), "constraint": False, 'unicidadeNeo4j': False, "constraintUniquess": False, "constraintList": [], "listProp": [], "listConstProp": False, "is_enum": True, "total": 0, "is_list": False, "tamQuantLista": {}, "ModaList": [], "tipos_listas": {}, "is_shared": False}
+
+        # Expandir a lista de valores com None até a posição atual
+        while len(self.propriedades[nome]["valores_propriedade"]) < self.quantidade:
+            self.propriedades[nome]["valores_propriedade"].append(None)
 
         if isinstance(valor, list):
             self.propriedades[nome]["is_list"] = True
@@ -25,18 +30,18 @@ class No:
             if isinstance(valor, str):
                 valor = valor[:20]
 
-            self.propriedades[nome]["valores_propriedade"].append(valor)
-            # print(self.propriedades[nome]["valores_propriedade"])
+            if valor is not None:
+                self.propriedades[nome]["valores_propriedade"][self.quantidade - 1] = valor
         else:
-            self._adicionar_tipo_propriedade(nome, valor)
+            if valor is not None:
+                self.propriedades[nome]["valores_propriedade"][self.quantidade - 1] = valor
+                self._adicionar_tipo_propriedade(nome, valor)
 
     def _adicionar_tipo_propriedade(self, nome, valor):
         # Lista com os valores das propriedades
         
         if isinstance(valor, str):
             valor = valor[:20]
-
-        self.propriedades[nome]["valores_propriedade"].append(valor)
 
         self.propriedades[nome]["total"] += 1
 
@@ -86,7 +91,8 @@ class No:
 
         return modas if modas else None
 
-    def adicionar_relacionamento(self, tipo_relacionamento, nodo_destino, quantidade_rel, propriedades):
+    def adicionar_relacionamento(self, tipo_relacionamento, nodo_destino, quantidade_rel, propriedades):            
+        # print(lista_valores)
         # Verifica se o tipo de relacionamento não existe e inicializa
         if tipo_relacionamento not in self.relacionamentos:
             self.relacionamentos[tipo_relacionamento] = []
@@ -105,7 +111,7 @@ class No:
                     "valores_enum": set(),
                     "is_enum": True,
                     "is_list": False,
-                    "list_info": {"tipo_item": None, "tamanho_min": None, "tamanho_max": None}
+                    "list_info": {"tipo_item": None, "tamanho_min": None, "tamanho_max": None},
                 }
             
             # Incrementa o total de ocorrências

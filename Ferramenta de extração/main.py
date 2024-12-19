@@ -113,7 +113,9 @@ def gerar_pg_schema_dicionario(nos):
 
     # Preencher o dicionário com os relacionamentos
     for rotulos, no in nos.items():
+        valores_prop = []
         for tipo_relacionamento, relacoes in no.relacionamentos.items():
+            #print(relacoes)
             for destino, quantidade, propriedades in relacoes:
                 # Armazenar propriedades chave
                 chaves = []
@@ -145,7 +147,7 @@ def gerar_pg_schema_dicionario(nos):
 
                 if len(destino) >= 2:
                     chave_ordenada_destino = tuple(no.supertipos + no.subtipos)
-                    print(destino, chave_ordenada_destino)
+                    # print(destino, chave_ordenada_destino)
                 else:
                     chave_ordenada_destino = tuple(destino)
 
@@ -176,6 +178,12 @@ def gerar_pg_schema_dicionario(nos):
                 origem_properties = {k: v["valores_propriedade"] for k, v in nos[rotulos].propriedades.items()}
                 destino_properties = {k: v["valores_propriedade"] for k, v in nos[destino].propriedades.items()}
 
+                # print(relacoes)
+                # print(no.valores_prop_rel)
+                # prop_rel = no.valores_prop_rel
+                # for nome, info in prop_rel:
+                #     print(nome)
+
                 pg_schema_dict["relationships"].append({
                     "origin": chave_ordenada_origem,
                     "origin_properties": origem_properties,
@@ -187,7 +195,8 @@ def gerar_pg_schema_dicionario(nos):
                     "properties": propriedades,
                     "primary_key": chaves,
                     "merge": merge,
-                    "more_occurrence": more_occurrence
+                    "more_occurrence": more_occurrence,
+                    "valores_insert": no.valores_prop_rel
                 })
 
                 # print(pg_schema_dict["relationships"])
@@ -297,7 +306,7 @@ pg_schema_dict = gerar_pg_schema_dicionario(nos)
 
 # Gerar a saída do PG-Schema
 saida_pg_schema = gerar_saida_pg_schema(pg_schema_dict)
-print(saida_pg_schema)
+# print(saida_pg_schema)
 
 # Dicionário nos, excluido.
 nos.clear()

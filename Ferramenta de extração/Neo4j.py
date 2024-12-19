@@ -20,14 +20,27 @@ def percorrer_nos_e_armazenar_info(tx, nos):
 
         # Adicionando propriedades ao nó
         propriedades = record["props"]
+
+        # Atualizar o conjunto de propriedades conhecidas
+        for nome in propriedades.keys():
+            if nome not in nos[rotulos].propriedades:
+                nos[rotulos].adicionar_propriedade(nome, "UNKNOWN", None)
+
         for nome, valor in propriedades.items():
+            # print(nos[rotulos].propriedades[nome])
             tipo = "UNKNOWN"
             if valor is not None:
                 tipo = type(valor).__name__
             nos[rotulos].adicionar_propriedade(nome, tipo, valor)
+            # print(nome,valor)
 
             if isinstance(valor, list):
                 percorrerNosLista(tx, nos, rotulos, nome, valor)
+
+        # Preencher valores ausentes com None
+        for nome in nos[rotulos].propriedades.keys():
+            if nome not in propriedades:
+                nos[rotulos].adicionar_propriedade(nome, "UNKNOWN", None)
 
         # Identificar supertipos e subtipos se o nó tiver 2 ou 3 rótulos
         if len(rotulos) == 2 or len(rotulos) == 3 or len(rotulos) == 4:
@@ -94,6 +107,37 @@ def percorrerNosLista(tx, nos, rotulos, nome, valor):
             nos[rotulos].propriedades[nome]["tipos"]["list"] = 1
 
 def coletar_relacionamentos(tx, nos):
+    # Retornar informações dos nodos origem, destino e rel para a criação dos inserts na migração
+    result_val = tx.run(
+        "MATCH (p)-[r]->(q)"
+        "RETURN labels(p) AS origem, properties(p) AS propOrigem, "
+        "type(r) AS relType, properties(r) AS propRel, "
+        "labels(q) AS destLabel, properties(q) AS propDestino"
+    )
+    i = 0
+    for record_val in result_val:
+        origem_val = tuple(record_val["origem"])  # Converter lista para tupla
+        prop_origem_val = record_val["propOrigem"]
+        tipo_rel_val = record_val["relType"]
+        prop_rel_val = record_val["propRel"]
+        destino_val = tuple(record_val["destLabel"])  # Converter lista para tupla
+        prop_destino_val = record_val["propDestino"]
+        # print(origem_val, tipo_rel_val, prop_rel_val, destino_val)
+        # print(tipo_rel_val)
+        
+        i += 1
+        print(i, prop_origem_val)
+
+        nos[origem_val].valores_prop_rel.append({
+            "origem": origem_val,
+            "propriedades_origem": prop_origem_val,
+            "relacionamento": tipo_rel_val,
+            "propriedades_relacionamento": prop_rel_val,
+            "destino": destino_val,
+            "propriedades_destino": prop_destino_val
+        })
+        # print(i, len(nos[origem_val].valores_prop_rel), tipo_rel_val)
+
     #ROTULOS E INFORMAÇÕES
     result = tx.run(
         "MATCH (p)-[r]->(q)"
@@ -114,6 +158,7 @@ def coletar_relacionamentos(tx, nos):
             f"MATCH ()-[rel:{tipo_relacionamento}]->()"
             "RETURN properties(rel) AS props"
         )
+
         for record_prop in result_prop:
             propriedades = record_prop["props"]
 
