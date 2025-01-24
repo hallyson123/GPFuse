@@ -22,6 +22,7 @@ def gerar_pg_schema_dicionario(nos):
 
     # Preencher o dicionário com as informações dos nós
     for rotulos, no in nos.items():
+        # print(rotulos)
         # Supertipo seguido de subtipos
         if len(rotulos) >= 2:
             # Tupla de supertipo e subtipos
@@ -40,7 +41,8 @@ def gerar_pg_schema_dicionario(nos):
             tam_max_lista = None
             tam_min_lista = None
 
-            # print(f"{rotulos}, {propriedade}, {info_propriedade["valores_propriedade"]}\n\n")
+            # if propriedade == 'uuid':
+                # print(f"{rotulos}, {propriedade}, {info_propriedade["valores_propriedade"]}\n\n")
 
             if info_propriedade["is_list"]:
                 tipo_propriedade = "array"
@@ -58,7 +60,9 @@ def gerar_pg_schema_dicionario(nos):
             tamanho_str = 0
             if tipo_propriedade == "str":
                 tamanho_str = max(len(valor) for valor in info_propriedade["PropValues"])
-            
+
+            # print(tamanho_str)
+
             # Definir Enum
             valores_enum = ', '.join(f'"{val}"' for val in info_propriedade.get("values"))
             definir_enum(no.quantidade, info_propriedade, no)
@@ -66,8 +70,10 @@ def gerar_pg_schema_dicionario(nos):
             # Constraint de obrigatoriedade
             if info_propriedade["total"] / no.quantidade >= THRESHOLD:
                 opcional = False
+                is_threshold = True
             else:
                 opcional = True
+                is_threshold = False
 
             # Constraint de unicidade
             unique = False
@@ -86,6 +92,7 @@ def gerar_pg_schema_dicionario(nos):
                 "type": tipo_propriedade,
                 "tamStr": tamanho_str,
                 "optional": opcional,
+                "is_threshold": is_threshold,
                 "unique": unique,
                 "shared": info_propriedade["is_shared"],
                 "is_enum": info_propriedade["is_enum"],
@@ -196,7 +203,8 @@ def gerar_pg_schema_dicionario(nos):
                     "primary_key": chaves,
                     "merge": merge,
                     "more_occurrence": more_occurrence,
-                    "valores_insert": no.valores_prop_rel
+                    "valores_insert": no.valores_prop_rel,
+                    "cardinality_type": None
                 })
 
                 # print(pg_schema_dict["relationships"])
@@ -306,7 +314,7 @@ pg_schema_dict = gerar_pg_schema_dicionario(nos)
 
 # Gerar a saída do PG-Schema
 saida_pg_schema = gerar_saida_pg_schema(pg_schema_dict)
-# print(saida_pg_schema)
+print(saida_pg_schema)
 
 # Dicionário nos, excluido.
 nos.clear()

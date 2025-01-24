@@ -34,6 +34,10 @@ class No:
                 self.propriedades[nome]["valores_propriedade"][self.quantidade - 1] = valor
         else:
             if valor is not None:
+                if isinstance(valor, str):
+                    valor = valor.replace("'", " ")
+                    # valor = valor[:10]
+                    
                 self.propriedades[nome]["valores_propriedade"][self.quantidade - 1] = valor
                 self._adicionar_tipo_propriedade(nome, valor)
 

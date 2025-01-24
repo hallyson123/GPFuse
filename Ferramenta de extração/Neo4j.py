@@ -12,6 +12,7 @@ def percorrer_nos_e_armazenar_info(tx, nos):
     i = 0
     for record in result:
         i += 1
+        # print(i)
         rotulos = tuple(record["nodeType"])
         # print(f"Nodos: {rotulos} {i}")
         if rotulos not in nos:
@@ -123,10 +124,10 @@ def coletar_relacionamentos(tx, nos):
         destino_val = tuple(record_val["destLabel"])  # Converter lista para tupla
         prop_destino_val = record_val["propDestino"]
         # print(origem_val, tipo_rel_val, prop_rel_val, destino_val)
-        # print(tipo_rel_val)
         
         i += 1
-        print(i, prop_origem_val)
+        print(i, tipo_rel_val)
+        # print(i, prop_origem_val)
 
         nos[origem_val].valores_prop_rel.append({
             "origem": origem_val,
