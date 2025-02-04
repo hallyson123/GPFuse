@@ -320,6 +320,8 @@ print(saida_pg_schema)
 nos.clear()
 
 file_path = "GraphRel/nos_dump.pkl"
+# file_path = "GraphRel/airbnb.pkl"
+# file_path = "GraphRel/imdb.pkl"
 
 # Salvar o dicionário 'nos' usando pickle
 salvar_nos_pickle(pg_schema_dict, file_path)
