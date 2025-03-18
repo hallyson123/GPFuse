@@ -5,6 +5,7 @@ import pickle
 
 MAX_ENUMERATE = 20
 THRESHOLD = 0.9
+
 THRESHOLD_OCCURRENCE = 0.7
 
 print("-----------------------")
