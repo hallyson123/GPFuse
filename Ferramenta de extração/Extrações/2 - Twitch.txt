@@ -1,0 +1,39 @@
+CREATE GRAPH TYPE TesteGraphType STRICT {
+(Stream & UserType : Stream & User {
+    OPTIONAL id STR,
+    followers INT,
+    OPTIONAL createdAt DATETIME,
+    OPTIONAL description STR,
+    name STR,
+    OPTIONAL total_view_count INT,
+    url STR}),
+
+(GameType : Game {
+    name STR}),
+
+(LanguageType : Language {
+    name STR}),
+
+(UserType : User {
+    name STR}),
+
+(TeamType : Team {
+    id STR,
+    createdAt DATETIME,
+    name STR}),
+
+(:Stream | User)-[PLAYSType : PLAYS (0:N);(1:N)]->(:GameType),
+(:Stream | User)-[HAS_LANGUAGEType : HAS_LANGUAGE (1:N);(1:N)]->(:LanguageType),
+(:Stream | User)-[CHATTERType : CHATTER (0:N);(0:N)]->(:Stream & UserType),
+(:Stream | User)-[HAS_TEAMType : HAS_TEAM (0:N);(0:N)]->(:TeamType),
+(:Stream | User)-[VIPType : VIP (0:N);(0:N)]->(:Stream & UserType),
+(:Stream | User)-[MODERATORType : MODERATOR (0:N);(0:N)]->(:Stream & UserType),
+(:User)-[MODERATORType : MODERATOR (0:N);(0:N)]->(:Stream & UserType),
+(:User)-[CHATTERType : CHATTER (0:N);(0:N)]->(:Stream & UserType),
+(:User)-[VIPType : VIP (0:N);(0:N)]->(:Stream & UserType)
+
+FOR (x:GameType) EXCLUSIVE MANDATORY SINGLETON x.name,
+FOR (x:LanguageType) EXCLUSIVE MANDATORY SINGLETON x.name,
+FOR (x:UserType) EXCLUSIVE MANDATORY SINGLETON x.name,
+FOR (x:TeamType) EXCLUSIVE MANDATORY SINGLETON x.id
+}

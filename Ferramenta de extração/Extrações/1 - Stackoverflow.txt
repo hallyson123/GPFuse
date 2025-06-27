@@ -1,0 +1,45 @@
+CREATE GRAPH TYPE TesteGraphType STRICT {
+(QuestionType : Question {
+    creation_date INT,
+    title STR,
+    link STR,
+    body_markdown STR,
+    answer_count INT,
+    uuid INT,
+    view_count INT,
+    OPTIONAL accepted_answer_id INT}),
+
+(UserType : User {
+    display_name STR,
+    uuid INT}),
+
+(TagType : Tag {
+    name STR,
+    link STR}),
+
+(AnswerType : Answer {
+    is_accepted BOOL,
+    title STR,
+    link STR,
+    score INT,
+    body_markdown STR,
+    uuid INT}),
+
+(CommentType : Comment {
+    link STR,
+    score INT,
+    uuid INT}),
+
+(:Question)-[TAGGEDType : TAGGED (1:N);(1:N)]->(:TagType),
+(:User)-[PROVIDEDType : PROVIDED (1:1);(1:N)]->(:AnswerType),
+(:User)-[ASKEDType : ASKED (1:1);(1:N)]->(:QuestionType),
+(:User)-[COMMENTEDType : COMMENTED (1:1);(1:N)]->(:CommentType),
+(:Answer)-[ANSWEREDType : ANSWERED (1:N);(1:1)]->(:QuestionType),
+(:Comment)-[COMMENTED_ONType : COMMENTED_ON (1:N);(1:1)]->(:QuestionType),
+
+FOR (x:QuestionType) EXCLUSIVE MANDATORY SINGLETON x.uuid,
+FOR (x:UserType) EXCLUSIVE MANDATORY SINGLETON x.uuid,
+FOR (x:TagType) EXCLUSIVE MANDATORY SINGLETON x.name,
+FOR (x:AnswerType) EXCLUSIVE MANDATORY SINGLETON x.uuid,
+FOR (x:CommentType) EXCLUSIVE MANDATORY SINGLETON x.uuid
+}

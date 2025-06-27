@@ -185,7 +185,7 @@ def gerar_pg_schema_dicionario(nos):
                 # Adicionar informações de origem e destino
                 origem_properties = {k: v["valores_propriedade"] for k, v in nos[rotulos].propriedades.items()}
                 destino_properties = {k: v["valores_propriedade"] for k, v in nos[destino].propriedades.items()}
-
+                
                 # print(relacoes)
                 # print(no.valores_prop_rel)
                 # prop_rel = no.valores_prop_rel
@@ -269,21 +269,21 @@ def gerar_saida_pg_schema(pg_schema_dict):
 
         # Cria o esquema do relacionamento no formato PG-Schema
         if len(prop_rel) == 0:
-            schema += f"(:{origem_str})-[{rel['relationship_type']}Type {rel['cardinality']}]->(:{destino_str}Type),\n"
+            schema += f"(:{origem_str})-[{rel['relationship_type']}Type : {rel['relationship_type']} {rel['cardinality']}]->(:{destino_str}Type),\n"
         else:
-            schema += f"(:{origem_str})-[{rel['relationship_type']}Type {{{propriedades_formatadas}}} {rel['cardinality']}]->(:{destino_str}Type),\n"
+            schema += f"(:{origem_str})-[{rel['relationship_type']}Type : {rel['relationship_type']} {{{propriedades_formatadas}}} {rel['cardinality']}]->(:{destino_str}Type),\n"
 
     schema += "\n"
 
     # Cosntraint Mandatory
-    for node, info in pg_schema_dict['nodes'].items():
-        node_str = ':'.join(node)
-        node_ = f"{node_str}Type"
-        for prop, prop_info in info['properties'].items():
-            if prop_info['optional'] == False:
-                schema += f"FOR (x:{node_}) MANDATORY x.{prop},\n"
+    # for node, info in pg_schema_dict['nodes'].items():
+    #     node_str = ':'.join(node)
+    #     node_ = f"{node_str}Type"
+    #     for prop, prop_info in info['properties'].items():
+    #         if prop_info['optional'] == False:
+    #             schema += f"FOR (x:{node_}) MANDATORY x.{prop},\n"
 
-    schema += "\n"
+    # schema += "\n"
 
     # Constraint Singleton
     for node, info in pg_schema_dict['nodes'].items():
@@ -296,19 +296,19 @@ def gerar_saida_pg_schema(pg_schema_dict):
             propriedades_concatenadas = ', '.join(listaProp)  # Concatena todas as propriedades em uma única string
             # print(info['uniqueProperties'])
             if len(info['uniqueProperties']) > 1 and len(info['uniqueProperties']) <= 2:
-                schema += f"FOR (x:{node_}) SINGLETON x.({propriedades_concatenadas}),\n"
+                schema += f"FOR (x:{node_}) EXCLUSIVE MANDATORY SINGLETON x.({propriedades_concatenadas}),\n"
             if len(info['uniqueProperties']) == 1:
-                schema += f"FOR (x:{node_}) SINGLETON x.{propriedades_concatenadas},\n"
+                schema += f"FOR (x:{node_}) EXCLUSIVE MANDATORY SINGLETON x.{propriedades_concatenadas},\n"
 
     schema = schema.rstrip(",\n")  # Remover a última vírgula e quebra de linha
     schema += "\n}"
 
     return schema
 
-def salvar_nos_pickle(nos, file_path):
-    with open(file_path, 'wb') as f:
-        pickle.dump(nos, f)
-    print(f"Dicionário 'PG-Schema' salvo em: {file_path}")
+# def salvar_nos_pickle(nos, file_path):
+#     with open(file_path, 'wb') as f:
+#         pickle.dump(nos, f)
+#     print(f"Dicionário 'PG-Schema' salvo em: {file_path}")
 
 # Criar o dicionário de PG-Schema
 pg_schema_dict = gerar_pg_schema_dicionario(nos)
@@ -325,4 +325,4 @@ file_path = "GraphRel/nos_dump.pkl"
 # file_path = "GraphRel/imdb.pkl"
 
 # Salvar o dicionário 'nos' usando pickle
-salvar_nos_pickle(pg_schema_dict, file_path)
+# salvar_nos_pickle(pg_schema_dict, file_path)

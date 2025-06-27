@@ -1,0 +1,55 @@
+CREATE GRAPH TYPE TesteGraphType STRICT {
+(User & MeType : User & Me {
+    *followers INT,
+    *following INT,
+    *location STR,
+    *name STR,
+    *screen_name STR,
+    *profile_image_url STR,
+    *url STR}),
+
+(UserType : User {
+    *followers INT,
+    *following INT,
+    *location STR,
+    *name STR,
+    *screen_name STR,
+    OPTIONAL statuses INT,
+    *profile_image_url STR,
+    OPTIONAL *url STR}),
+
+(TweetType : Tweet {
+    id INT,
+    OPTIONAL text STR,
+    OPTIONAL created_at DATETIME,
+    OPTIONAL import_method STR,
+    OPTIONAL favorites INT,
+    OPTIONAL id_str STR}),
+
+(SourceType : Source {
+    name STR}),
+
+(HashtagType : Hashtag {
+    name STR}),
+
+(LinkType : Link {
+    url STR}),
+
+(:User | Me)-[FOLLOWSType : FOLLOWS (0:1);(1:N)]->(:UserType),
+(:User | Me)-[POSTSType : POSTS (1:1);(1:N)]->(:TweetType),
+(:User)-[FOLLOWSType : FOLLOWS (1:N);(1:1)]->(:Type),
+(:User)-[POSTSType : POSTS (1:1);(0:N)]->(:TweetType),
+(:Tweet)-[USINGType : USING (1:N);(1:1)]->(:SourceType),
+(:Tweet)-[TAGSType : TAGS (1:N);(0:N)]->(:HashtagType),
+(:Tweet)-[CONTAINSType : CONTAINS (1:N);(1:N)]->(:LinkType),
+(:Tweet)-[MENTIONSType : MENTIONS (1:N);(0:1)]->(:UserType),
+(:Tweet)-[MENTIONSType : MENTIONS (1:N);(0:1)]->(:Type),
+(:Tweet)-[RETWEETSType : RETWEETS (0:1);(0:1)]->(:TweetType),
+(:Tweet)-[REPLY_TOType : REPLY_TO (0:N);(0:1)]->(:TweetType),
+
+FOR (x:UserType) EXCLUSIVE MANDATORY SINGLETON x.screen_name,
+FOR (x:TweetType) EXCLUSIVE MANDATORY SINGLETON x.id,
+FOR (x:SourceType) EXCLUSIVE MANDATORY SINGLETON x.name,
+FOR (x:HashtagType) EXCLUSIVE MANDATORY SINGLETON x.name,
+FOR (x:LinkType) EXCLUSIVE MANDATORY SINGLETON x.url
+}

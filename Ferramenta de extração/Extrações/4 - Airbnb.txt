@@ -1,0 +1,39 @@
+CREATE GRAPH TYPE TesteGraphType STRICT {
+(HostType : Host {
+    host_id STR,
+    host_name STR}),
+
+(ReviewType : Review {
+    date STR}),
+
+(ListingType : Listing {
+    minimum_nights INT,
+    OPTIONAL neighbourhood_group STR,
+    availability_365 INT,
+    room_type STR,
+    number_of_reviews_ltm INT,
+    id STR,
+    number_of_reviews INT,
+    OPTIONAL price INT,
+    OPTIONAL last_review STR,
+    OPTIONAL reviews_per_month FLOAT,
+    name STR,
+    longitude FLOAT,
+    latitude FLOAT,
+    calculated_host_listings_count INT,
+    neighbourhood STR,
+    OPTIONAL license STR}),
+
+(NeighbourhoodType : Neighbourhood {
+    OPTIONAL neighbourhood_group ENUM ("Staten Island", "Manhattan", "Bronx", "Brooklyn", "Queens"),
+    neighbourhood STR}),
+
+(:Host)-[HOSTType : HOST (1:1);(1:N)]->(:ListingType),
+(:Review)-[REVIEWSType : REVIEWS (1:N);(1:N)]->(:ListingType),
+(:Listing)-[IN_NEIGHBOURHOODType : IN_NEIGHBOURHOOD (1:N);(1:1)]->(:NeighbourhoodType),
+
+FOR (x:HostType) EXCLUSIVE MANDATORY SINGLETON x.host_id,
+FOR (x:ReviewType) EXCLUSIVE MANDATORY SINGLETON x.date,
+FOR (x:ListingType) EXCLUSIVE MANDATORY SINGLETON x.id,
+FOR (x:NeighbourhoodType) EXCLUSIVE MANDATORY SINGLETON x.neighbourhood
+}

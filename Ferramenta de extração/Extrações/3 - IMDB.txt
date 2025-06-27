@@ -1,0 +1,33 @@
+CREATE GRAPH TYPE TesteGraphType STRICT {
+(PersonType : Person {
+    OPTIONAL birthYear INT,
+    OPTIONAL deathYear INT,
+    nconst STR,
+    OPTIONAL primaryName STR,
+    OPTIONAL primaryProfession ARRAY str (0, 3),
+    OPTIONAL knownForTitles ARRAY str (0, 4)}),
+
+(MovieType : Movie {
+    OPTIONAL endYear INT,
+    tconst STR,
+    OPTIONAL genres ARRAY str (0, 3),
+    OPTIONAL startYear INT,
+    titleType STR,
+    OPTIONAL originalTitle STR,
+    isAdult INT,
+    OPTIONAL primaryTitle STR,
+    OPTIONAL runtimeMinutes INT}),
+
+(:Person)-[actressType : actress (0:N);(0:N)]->(:MovieType),
+(:Person)-[directorType : director (0:N);(0:N)]->(:MovieType),
+(:Person)-[composerType : composer (0:N);(0:N)]->(:MovieType),
+(:Person)-[producerType : producer (0:N);(0:N)]->(:MovieType),
+(:Person)-[editorType : editor (0:N);(0:N)]->(:MovieType),
+(:Person)-[actorType : actor (0:N);(0:N)]->(:MovieType),
+(:Person)-[cinematographerType : cinematographer (0:N);(0:N)]->(:MovieType),
+(:Person)-[writerType : writer (0:N);(0:N)]->(:MovieType),
+(:Person)-[selfType : self (0:N);(0:N)]->(:MovieType),
+(:Person)-[production_designerType : production_designer (0:N);(0:N)]->(:MovieType),
+(:Person)-[archive_footageType : archive_footage (0:N);(0:N)]->(:MovieType),
+(:Person)-[casting_directorType : casting_director (0:N);(0:N)]->(:MovieType),
+(:Person)-[archive_soundType : archive_sound (0:N);(0:N)]->(:MovieType)
