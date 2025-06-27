@@ -1,0 +1,91 @@
+CREATE GRAPH TYPE TesteGraphType STRICT {
+(SponsorType : Sponsor {
+    name STR,
+    country STR}),
+
+(StreamingType : Streaming {
+    website ENUM ("www.netflix.com", "www.appletv+.com", "www.amazonprimevideo", "www.disney+.com", "www.hbomax.com"),
+    name ENUM ("Netflix", "Amazon Prime Video", "Disney+", "HBO Max", "Apple TV+")}),
+
+(FilmType : Film {
+    OPTIONAL genre ENUM ("Ação", "Aventura", "Comédia", "Drama", "Ficção Científica", "Fantasia", "Terror", "Suspense", "Mistério", "Romance", "Documentário", "Animação", "Musical", "Faroeste", "Guerra", "Policial", "Biografia", "Histórico"),
+    title STR,
+    release_year INT,
+    winner_years_list ARRAY int (0, 5)}),
+
+(Person & Reviewer & ProducerType : Person & Reviewer & Producer {
+    *id STR,
+    OPTIONAL producer_type ENUM ("Supervising Producer", "Co-Producer", "Line Producer", "Executive Producer", "Producer", "Consulting Producer", "Associate Producer", "Segment Producer"),
+    OPTIONAL critic_profile_url STR,
+    OPTIONAL *birth_date STR,
+    *name STR,
+    *phone_list ARRAY str (0, 65)}),
+
+(Person & DirectorType : Person & Director {
+    *id STR,
+    *birth_date STR,
+    *name STR,
+    OPTIONAL debut_film_year INT,
+    *phone_list ARRAY str (0, 38)}),
+
+(Person & ProducerType : Person & Producer {
+    *id STR,
+    OPTIONAL producer_type ENUM ("Supervising Producer", "Producer", "Co-Producer", "Executive Producer", "Segment Producer", "Consulting Producer", "Associate Producer", "Line Producer"),
+    OPTIONAL *birth_date STR,
+    *name STR,
+    *phone_list ARRAY str (0, 48)}),
+
+(Person & Director & ProducerType : Person & Director & Producer {
+    *id STR,
+    OPTIONAL producer_type ENUM ("Supervising Producer", "Producer", "Co-Producer", "Executive Producer", "Segment Producer", "Consulting Producer", "Associate Producer", "Line Producer"),
+    *birth_date STR,
+    *name STR,
+    OPTIONAL debut_film_year INT,
+    *phone_list ARRAY str (0, 87)}),
+
+(PersonType : Person {
+    *id STR,
+    *birth_date STR,
+    *name STR,
+    *phone_list ARRAY str (0, 100)}),
+
+(Person & ReviewerType : Person & Reviewer {
+    *id STR,
+    OPTIONAL critic_profile_url STR,
+    *birth_date STR,
+    *name STR,
+    *phone_list ARRAY str (0, 79)}),
+
+(Person & Director & Reviewer & ProducerType : Person & Director & Reviewer & Producer {
+    *id STR,
+    producer_type ENUM ("Supervising Producer", "Producer", "Co-Producer", "Executive Producer", "Segment Producer", "Consulting Producer", "Associate Producer", "Line Producer"),
+    OPTIONAL critic_profile_url STR,
+    OPTIONAL *birth_date STR,
+    *name STR,
+    OPTIONAL debut_film_year INT,
+    *phone_list ARRAY str (0, 28)}),
+
+(Person & Director & ReviewerType : Person & Director & Reviewer {
+    *id STR,
+    OPTIONAL critic_profile_url STR,
+    OPTIONAL *birth_date STR,
+    *name STR,
+    OPTIONAL debut_film_year INT,
+    *phone_list ARRAY str (0, 31)}),
+
+(:Sponsor)-[SPONSORED_BYType : SPONSORED_BY {budget: int (100)} (0:1);(1:N)]->(:FilmType),
+(:Streaming)-[CONTAINSType : CONTAINS {end_broadcasting: str (3013), start_broadcasting: str (3013)} (0:N);(1:N)]->(:FilmType),
+(:Person | Reviewer | Producer)-[RELATED_TOType : RELATED_TO (1:N);(0:N)]->(:FilmType),
+(:Person | Director)-[RELATED_TOType : RELATED_TO (1:N);(0:N)]->(:FilmType),
+(:Person | Producer)-[RELATED_TOType : RELATED_TO (1:N);(0:N)]->(:FilmType),
+(:Person | Director | Producer)-[RELATED_TOType : RELATED_TO (1:N);(0:N)]->(:FilmType),
+(:Person)-[RELATED_TOType : RELATED_TO (1:N);(0:N)]->(:FilmType),
+(:Person | Reviewer)-[RELATED_TOType : RELATED_TO (1:N);(0:N)]->(:FilmType),
+(:Person | Director | Reviewer | Producer)-[RELATED_TOType : RELATED_TO (1:N);(0:N)]->(:FilmType),
+(:Person | Director | Reviewer)-[RELATED_TOType : RELATED_TO (1:N);(0:N)]->(:FilmType),
+
+FOR (x:SponsorType) EXCLUSIVE MANDATORY SINGLETON x.name,
+FOR (x:StreamingType) EXCLUSIVE MANDATORY SINGLETON x.name,
+FOR (x:FilmType) EXCLUSIVE MANDATORY SINGLETON x.title,
+FOR (x:PersonType) EXCLUSIVE MANDATORY SINGLETON x.id
+}
