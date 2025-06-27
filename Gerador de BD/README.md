@@ -10,4 +10,4 @@
 
 #### Esquema conceitual do banco de dados ####
 
-![Modelo ER](https://github.com/hallyson123/Projeto-IC/assets/47453299/b7917fd9-0044-4661-9093-70baa06263e1)
+[![Modelo ER](https://github.com/hallyson123/Projeto-IC/assets/47453299/b7917fd9-0044-4661-9093-70baa06263e1)](https://github.com/hallyson123/GPFuse/issues/2#issue-3184222940)
