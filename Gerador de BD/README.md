@@ -8,6 +8,6 @@
 - Criar Relacionamentos: Estabelece relacionamentos entre os nodos criados, garantindo que cada nodo de origem tenha pelo menos um relacionamento.
 - Criar Restrições: Cria restrições de unicidade para garantir que certas propriedades de nodos sejam únicas.
 
-#### Esquema conceitual do banco de dados ####
+#### Esquema conceitual do banco de dados sintético ####
 
-![Modelo ER](https://github.com/hallyson123/Projeto-IC/assets/47453299/b7917fd9-0044-4661-9093-70baa06263e1)
+> ![Image](https://github.com/user-attachments/assets/6b7e0bf0-6945-4625-8d0e-d37bf57c35e1)
