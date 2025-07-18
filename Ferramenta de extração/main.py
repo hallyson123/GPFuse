@@ -294,6 +294,7 @@ def gerar_saida_pg_schema(pg_schema_dict):
             listaProp = []
             listaProp.extend(info["uniqueProperties"])  # Adiciona as propriedades à lista
             propriedades_concatenadas = ', '.join(listaProp)  # Concatena todas as propriedades em uma única string
+            print(node, listaProp)
             # print(info['uniqueProperties'])
             if len(info['uniqueProperties']) > 1 and len(info['uniqueProperties']) <= 2:
                 schema += f"FOR (x:{node_}) EXCLUSIVE MANDATORY SINGLETON x.({propriedades_concatenadas}),\n"

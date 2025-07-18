@@ -5,7 +5,7 @@ import random
 import datetime
 
 # Importar as funções dos outros arquivos
-from criar_restricao import criar_restricao_se_nao_existe
+from criar_restricao import criar_restricao_se_nao_existe, criar_restricao_composta_se_nao_existe
 from criar_nodos import criar_nodo
 from criar_relacionamentos import (
     relacionar_pessoa_filme,
@@ -120,7 +120,7 @@ def gerar_banco_base():
 
         # PASSO 1: CRIAR RESTRIÇÕES
         print("--- Garantindo Restrições ---")
-        session.execute_write(criar_restricao_se_nao_existe, "Person", "id")
+        session.execute_write(criar_restricao_composta_se_nao_existe, "Person", ("id", "name"))
         session.execute_write(criar_restricao_se_nao_existe, "Film", "title")
         session.execute_write(criar_restricao_se_nao_existe, "Sponsor", "name")
         session.execute_write(criar_restricao_se_nao_existe, "Streaming", "name")
@@ -187,7 +187,7 @@ def gerar_banco_sintetico(num_pessoas, num_filmes, num_sponsors, densidade_rel):
     with driver.session() as session:
         # PASSO 1: CRIAR RESTRIÇÕES
         print("--- Garantindo Restrições ---")
-        session.execute_write(criar_restricao_se_nao_existe, "Person", "id")
+        session.execute_write(criar_restricao_composta_se_nao_existe, "Person", ("id", "name"))
         session.execute_write(criar_restricao_se_nao_existe, "Film", "title")
         session.execute_write(criar_restricao_se_nao_existe, "Sponsor", "name")
         session.execute_write(criar_restricao_se_nao_existe, "Streaming", "name")

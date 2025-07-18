@@ -126,7 +126,7 @@ def coletar_relacionamentos(tx, nos):
         # print(origem_val, tipo_rel_val, prop_rel_val, destino_val)
         
         i += 1
-        print(i, tipo_rel_val)
+        # print(i, tipo_rel_val)
         # print(i, prop_origem_val)
 
         nos[origem_val].valores_prop_rel.append({
